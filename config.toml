@@ -45,10 +45,6 @@ publishDir = "docs"
     url = "https://github.com/WhaleFall-UESTC"
 
   [[params.social]]
-    name = "qq"
-    url = "tencent://message/?uin=166845494"
-
-  [[params.social]]
     name = "email"
     url = "mailto:166845494@qq.com"
 

@@ -1,0 +1,10 @@
+.my-avatar {
+  width: 150px;
+  height: 150px;
+  object-fit: cover; /* 保持比例裁剪 */
+  border-radius: 50%; /* 圆形头像 */
+  border: 3px solid #ccc; /* 边框 */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); /* 可选阴影效果 */
+  float: left; /* 左对齐，文字环绕 */
+  margin: 0 20px 20px 0; /* 控制与文字的间距 */
+}
