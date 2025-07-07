@@ -69,13 +69,18 @@ publishDir = "docs"
 # 导航菜单配置
 [[menu.main]]
   identifier = "blog"
-  name = "文章"
+  name = "Blog"
   url = "/posts"
   weight = 1
 
 [[menu.main]]
   identifier = "about"
-  name = "关于"
+  name = "About"
   url = "/about"
   weight = 2
 
+[[menu.main]]
+  identifier = "tags"
+  name = "Tags"
+  url = "/tags"
+  weight = 2
