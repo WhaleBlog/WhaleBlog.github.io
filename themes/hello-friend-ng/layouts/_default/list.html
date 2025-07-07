@@ -1,6 +1,17 @@
 {{ define "main" }}
     {{ $paginator := .Paginate .Data.Pages }}
 
+    <!-- <pre style="background:#f0f0f0;padding:1rem;overflow:auto;"> -->
+    <!-- Section: {{ .Section }} -->
+    <!-- Kind: {{ .Kind }} -->
+    <!-- RegularPages: {{ .RegularPages }} -->
+    <!-- Data.Pages: {{ .Data.Pages }} -->
+    <!-- Paginator: {{ $pag := .Paginate .Data.Pages }}  -->
+    <!-- Total Pages: {{ $pag.TotalPages }} -->
+    <!-- Page Number: {{ $pag.PageNumber }} -->
+    </pre>
+    <!-- 调试结束 -->
+
     <main class="posts">
         <h1>{{ .Title }}</h1>
 

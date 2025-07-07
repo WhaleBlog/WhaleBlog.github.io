@@ -4,6 +4,7 @@ languageCode = "zh-cn"
 defaultContentLanguage = "zh"
 theme = "hello-friend-ng"
 paginate = 10
+paginatePath = "page"
 
 publishDir = "docs" 
 
@@ -55,7 +56,7 @@ publishDir = "docs"
   category = "categories"
   tag = "tags"
   series = "series"
-  post = "posts"
+  # post = "posts"
 
 [languages.zh]
   title = "WhaleFall's Blog"

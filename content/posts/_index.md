@@ -1,5 +1,5 @@
 ---
 title: "所有文章"
-type: "posts"
+type: "section"
 date: 2024-01-01
 ---
