@@ -1,0 +1,24 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <title>Posts on WhaleFall&#39;s Blog</title>
+        <link>//localhost:1313/posts/</link>
+        <description>Recent content in Posts on WhaleFall&#39;s Blog</description>
+        <generator>Hugo -- gohugo.io</generator>
+        <language>zh</language>
+        <copyright>&lt;a href=&#34;https://creativecommons.org/licenses/by-nc/4.0/&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;CC BY-NC 4.0&lt;/a&gt;</copyright>
+        <lastBuildDate>Sun, 06 Jul 2025 22:08:26 +0800</lastBuildDate>
+        <atom:link href="//localhost:1313/posts/index.xml" rel="self" type="application/rss+xml" />
+        
+        <item>
+            <title>My First Post</title>
+            <link>//localhost:1313/posts/my-first-post/</link>
+            <pubDate>Sun, 06 Jul 2025 22:08:26 +0800</pubDate>
+            
+            <guid>//localhost:1313/posts/my-first-post/</guid>
+            <description>这是我的第一篇 Hugo 博客</description>
+            <content type="html"><![CDATA[<p>这是我的第一篇 Hugo 博客</p>
+]]></content>
+        </item>
+        
+    </channel>
+</rss>
