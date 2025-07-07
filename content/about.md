@@ -1,8 +1,10 @@
 +++
 title = 'About'
 date = 2025-07-07T15:26:05+08:00
-draft = true
+draft = false
 +++
+
+<!-- {{< image src="/images/avatar.jpg" alt="avatar" position="center" style="border-radius: 8px;" >}} -->
 
 
 我是 WhaleFall，一个计科专业普通的本科生

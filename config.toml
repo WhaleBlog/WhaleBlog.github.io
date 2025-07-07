@@ -61,7 +61,6 @@ publishDir = "docs"
   copyright = '<a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a>'
 
   [languages.zh.params]
-    subtitle = "一个简洁的 Hugo 主题"
     readOtherPosts = "浏览其他文章" 
     [languages.zh.params.logo]
       logoText = "WhaleFall"
