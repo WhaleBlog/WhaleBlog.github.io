@@ -1,5 +1,5 @@
-baseurl = "localhost"
-title = "我的博客"
+baseurl = "https://whaleblog.github.io/"
+title = "WhaleFall's Blog"
 languageCode = "zh-cn"
 defaultContentLanguage = "zh"
 theme = "hello-friend-ng"
@@ -34,7 +34,7 @@ paginate = 10
   # 显示文章字数
   showWordCount = true
 
-  EnableSharingButtons = false
+  # EnableSharingButtons = false
 
   # 自定义社交链接
   [[params.social]]
