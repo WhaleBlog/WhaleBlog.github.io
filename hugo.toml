@@ -5,6 +5,8 @@ defaultContentLanguage = "zh"
 theme = "hello-friend-ng"
 paginate = 10
 
+publishDir = "docs" 
+
 [params]
   dateform        = "Jan 2, 2006"
   dateformShort   = "Jan 2"
@@ -53,6 +55,7 @@ paginate = 10
   category = "categories"
   tag = "tags"
   series = "series"
+  post = "posts"
 
 [languages.zh]
   title = "WhaleFall's Blog"

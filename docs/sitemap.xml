@@ -2,7 +2,16 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
+    <loc>https://whaleblog.github.io/tags/hugo/</loc>
+    <lastmod>2025-07-06T22:08:26+08:00</lastmod>
+  </url><url>
+    <loc>https://whaleblog.github.io/posts/my-first-post/</loc>
+    <lastmod>2025-07-06T22:08:26+08:00</lastmod>
+  </url><url>
     <loc>https://whaleblog.github.io/posts/</loc>
+    <lastmod>2025-07-06T22:08:26+08:00</lastmod>
+  </url><url>
+    <loc>https://whaleblog.github.io/tags/</loc>
     <lastmod>2025-07-06T22:08:26+08:00</lastmod>
   </url><url>
     <loc>https://whaleblog.github.io/</loc>
@@ -11,7 +20,5 @@
     <loc>https://whaleblog.github.io/categories/</loc>
   </url><url>
     <loc>https://whaleblog.github.io/series/</loc>
-  </url><url>
-    <loc>https://whaleblog.github.io/tags/</loc>
   </url>
 </urlset>

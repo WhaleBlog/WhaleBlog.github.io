@@ -1,7 +1,7 @@
 ---
 title: "My First Post"
 date: 2025-07-06T22:08:26+08:00
-draft: true
+draft: false
 toc: false
 images:
 tags: ["Hugo"]
