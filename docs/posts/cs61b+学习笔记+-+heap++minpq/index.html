@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh">
+    <head>
+        <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="author" content="">
+<meta name="description" content="1. Interface 以下是最小优先队列所需实现的方法。在这个数据结构中，我们只关心其最小值。
+/** (Min) Priority Queue: Allowing tracking and removal of * the smallest item in a priority queue. */ public interface MinPQ&amp;lt;Item&amp;gt; { /** Adds the item to the priority queue. */ public void add(Item x); /** Returns the smallest item in the priority queue. */ public Item getSmallest(); /** Removes the smallest item from the priority queue. */ public Item removeSmallest(); /** Returns the size of the priority queue." />
+<meta name="keywords" content=", cs61b" />
+<meta name="robots" content="noodp" />
+<meta name="theme-color" content="" />
+<link rel="canonical" href="https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;heap&#43;&#43;minpq/" />
+
+
+    <title>
+        
+            CS61B 学习笔记 - Heap &amp; MinPQ :: WhaleFall&#39;s Blog 
+        
+    </title>
+
+
+
+
+
+  <link rel="stylesheet" href="/main.min.ab5336003ba331300318b49292c672210905baf1ef5410a739f647e70c8808fa.css" integrity="sha256-q1M2ADujMTADGLSSksZyIQkFuvHvVBCnOfZH5wyICPo=" crossorigin="anonymous">
+
+
+
+
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <meta name="msapplication-TileColor" content="">
+
+
+<meta itemprop="name" content="CS61B 学习笔记 - Heap &amp; MinPQ">
+<meta itemprop="description" content="1. Interface 以下是最小优先队列所需实现的方法。在这个数据结构中，我们只关心其最小值。
+/** (Min) Priority Queue: Allowing tracking and removal of * the smallest item in a priority queue. */ public interface MinPQ&lt;Item&gt; { /** Adds the item to the priority queue. */ public void add(Item x); /** Returns the smallest item in the priority queue. */ public Item getSmallest(); /** Removes the smallest item from the priority queue. */ public Item removeSmallest(); /** Returns the size of the priority queue."><meta itemprop="datePublished" content="2024-07-30T10:08:41+00:00" />
+<meta itemprop="dateModified" content="2024-07-30T10:08:41+00:00" />
+<meta itemprop="wordCount" content="299"><meta itemprop="image" content="https://whaleblog.github.io/" />
+<meta itemprop="keywords" content="cs61b," />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content="https://whaleblog.github.io/" /><meta name="twitter:title" content="CS61B 学习笔记 - Heap &amp; MinPQ"/>
+<meta name="twitter:description" content="1. Interface 以下是最小优先队列所需实现的方法。在这个数据结构中，我们只关心其最小值。
+/** (Min) Priority Queue: Allowing tracking and removal of * the smallest item in a priority queue. */ public interface MinPQ&lt;Item&gt; { /** Adds the item to the priority queue. */ public void add(Item x); /** Returns the smallest item in the priority queue. */ public Item getSmallest(); /** Removes the smallest item from the priority queue. */ public Item removeSmallest(); /** Returns the size of the priority queue."/>
+
+
+
+    <meta property="og:title" content="CS61B 学习笔记 - Heap &amp; MinPQ" />
+<meta property="og:description" content="1. Interface 以下是最小优先队列所需实现的方法。在这个数据结构中，我们只关心其最小值。
+/** (Min) Priority Queue: Allowing tracking and removal of * the smallest item in a priority queue. */ public interface MinPQ&lt;Item&gt; { /** Adds the item to the priority queue. */ public void add(Item x); /** Returns the smallest item in the priority queue. */ public Item getSmallest(); /** Removes the smallest item from the priority queue. */ public Item removeSmallest(); /** Returns the size of the priority queue." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;heap&#43;&#43;minpq/" /><meta property="og:image" content="https://whaleblog.github.io/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2024-07-30T10:08:41+00:00" />
+<meta property="article:modified_time" content="2024-07-30T10:08:41+00:00" />
+
+
+
+
+
+    <meta property="article:section" content="notes" />
+
+    <meta property="article:section" content="courses" />
+
+
+
+    <meta property="article:published_time" content="2024-07-30 10:08:41 &#43;0000 UTC" />
+
+
+
+
+
+
+
+
+
+
+
+
+    </head>
+
+    
+        <body>
+    
+    
+        <div class="container">
+            <header class="header">
+    <span class="header__inner">
+        <a href="/" style="text-decoration: none;">
+    <div class="logo">
+        
+            <span class="logo__mark">></span>
+            <span class="logo__text ">
+                WhaleFall</span>
+            <span class="logo__cursor" style=
+                  "
+                   
+                   ">
+            </span>
+        
+    </div>
+</a>
+
+
+        <span class="header__right">
+                <nav class="menu">
+    <ul class="menu__inner"><li><a href="/about">About</a></li><li><a href="/posts">Blog</a></li><li><a href="/tags">Tags</a></li>
+    </ul>
+</nav>
+
+                <span class="menu-trigger">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                    </svg>
+                </span>
+        </span>
+    </span>
+</header>
+
+
+            <div class="content">
+                
+  <main class="post">
+
+    <div class="post-info">
+      <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        2分钟阅读
+
+        
+      </p>
+    </div>
+
+    <article>
+      <h1 class="post-title">
+        <a href="https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;heap&#43;&#43;minpq/">CS61B 学习笔记 - Heap &amp; MinPQ</a>
+      </h1>
+
+      
+
+      
+
+      
+
+      <div class="post-content">
+        <h2 id="1-interface">1. Interface</h2>
+<p>以下是最小优先队列所需实现的方法。在这个数据结构中，我们只关心其最小值。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#75715e">/** (Min) Priority Queue: Allowing tracking and removal of 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">  * the smallest item in a priority queue. */</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">interface</span> <span style="color:#a6e22e">MinPQ</span><span style="color:#f92672">&lt;</span>Item<span style="color:#f92672">&gt;</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">/** Adds the item to the priority queue. */</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">add</span>(Item x);
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">/** Returns the smallest item in the priority queue. */</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">public</span> Item <span style="color:#a6e22e">getSmallest</span>();
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">/** Removes the smallest item from the priority queue. */</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">public</span> Item <span style="color:#a6e22e">removeSmallest</span>();
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">/** Returns the size of the priority queue. */</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">int</span> <span style="color:#a6e22e">size</span>();
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="2-minpq">2. MinPQ</h2>
+<p>我们使用二叉树来实现这个数据结构，但是，它还需要满足以下两个性质：</p>
+<ol>
+<li>
+<p>每个节点都小于或等于它的两个子节点</p>
+</li>
+<li>
+<p>只允许树的最底部有空缺，其他层必须是完整的，且所有节点尽可能靠左</p>
+</li>
+</ol>
+<p><img alt="MinPQ.png" src="/upload/MinPQ.png"></p>
+<p>在上图中，绿色表示有效的堆，红色则不是</p>
+<p>我们同样使用数组来表示这样一棵树。但与 BST 不同，根节点存储在 pq[1] 中，而不是 pq[0]；对于树上的节点 K，它的子节点，父节点位于:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span>leftChild(k) <span style="color:#f92672">=</span> 2 <span style="color:#f92672">*</span> k
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">rightChild</span>(k) <span style="color:#f92672">=</span> 2 <span style="color:#f92672">*</span> k <span style="color:#f92672">+</span> 1
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">parent</span>(k) <span style="color:#f92672">=</span> k <span style="color:#f92672">/</span> 2
+</span></span></code></pre></div><p>比如根节点（k = 1) 的左节点存储在 pq[2]，右节点存储在 pq[3]，其左右节点的父节点（也就是根节点自身）存储在 pq[1]（2 / 2 = 3 / 2 = 1）</p>
+<h2 id="3-implements">3. Implements</h2>
+<p>这里是一个 <a href="https://algs4.cs.princeton.edu/24pq/MinPQ.java.html">MinPQ的实现</a></p>
+<p>课程 <a href="https://sp18.datastructur.es/materials/lab/lab10/lab10">lab10</a> 内容就是实现一个自己的最小堆，<a href="https://github.com/WhaleFall-UESTC/CS61B-Spring-2018/blob/master/lab10/ArrayHeap.java">这里</a>是我的实现</p>
+<p>就像最开始我们实现的链表一样，堆同样会需要<code>resize()</code>操作来调整大小</p>
+<h3 id="add">add</h3>
+<p>将新 add 的元素添加到队伍末尾，然后调用<code>swim()</code>使其向上“游”到合适的位置</p>
+<p><code>swim()</code>则是不断比较根节点大小，若根节点更大，则交换两者，直到 swim 的元素到比根节点大</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">insert</span>(Key x) {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// double size of array if necessary</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (n <span style="color:#f92672">==</span> pq.<span style="color:#a6e22e">length</span> <span style="color:#f92672">-</span> 1) resize(2 <span style="color:#f92672">*</span> pq.<span style="color:#a6e22e">length</span>);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// add x, and percolate it up to maintain heap invariant</span>
+</span></span><span style="display:flex;"><span>    pq<span style="color:#f92672">[++</span>n<span style="color:#f92672">]</span> <span style="color:#f92672">=</span> x;
+</span></span><span style="display:flex;"><span>    swim(n);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">assert</span> isMinHeap();
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#66d9ef">private</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">swim</span>(<span style="color:#66d9ef">int</span> k) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (k <span style="color:#f92672">&gt;</span> 1 <span style="color:#f92672">&amp;&amp;</span> greater(k<span style="color:#f92672">/</span>2, k)) {
+</span></span><span style="display:flex;"><span>        exch(k<span style="color:#f92672">/</span>2, k);     <span style="color:#75715e">// swap</span>
+</span></span><span style="display:flex;"><span>        k <span style="color:#f92672">=</span> k<span style="color:#f92672">/</span>2;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="getsmallest">getSmallest</h3>
+<p>只要返回根节点 pq[1] 便可</p>
+<h3 id="removesmallest">removeSmallest</h3>
+<p>将根节点与数组最末尾的元素进行交换，这样 pq[1] 存放着原先最末尾的元素，然后将 pq 最某位设成 null 删除原来的 root</p>
+<p>接着调用<code>sink(1)</code>，使现在的最顶部元素下沉到合适位置</p>
+<p><code>sink()</code>则是不断比较子节点大小，若子节点更小则交换，直到比任何子节点都要小</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#66d9ef">public</span> Key <span style="color:#a6e22e">removeSmallest</span>() {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (isEmpty()) <span style="color:#66d9ef">throw</span> <span style="color:#66d9ef">new</span> NoSuchElementException(<span style="color:#e6db74">&#34;Priority queue underflow&#34;</span>);
+</span></span><span style="display:flex;"><span>    Key min <span style="color:#f92672">=</span> pq<span style="color:#f92672">[</span>1<span style="color:#f92672">]</span>;
+</span></span><span style="display:flex;"><span>    exch(1, n<span style="color:#f92672">--</span>);   <span style="color:#75715e">// n 表示堆中元素数量</span>
+</span></span><span style="display:flex;"><span>    sink(1);
+</span></span><span style="display:flex;"><span>    pq<span style="color:#f92672">[</span>n<span style="color:#f92672">+</span>1<span style="color:#f92672">]</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">null</span>;     <span style="color:#75715e">// to avoid loitering and help with garbage collection</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> ((n <span style="color:#f92672">&gt;</span> 0) <span style="color:#f92672">&amp;&amp;</span> (n <span style="color:#f92672">==</span> (pq.<span style="color:#a6e22e">length</span> <span style="color:#f92672">-</span> 1) <span style="color:#f92672">/</span> 4)) resize(pq.<span style="color:#a6e22e">length</span> <span style="color:#f92672">/</span> 2);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">assert</span> isMinHeap();
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> min;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">private</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">sink</span>(<span style="color:#66d9ef">int</span> k) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (2<span style="color:#f92672">*</span>k <span style="color:#f92672">&lt;=</span> n) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">int</span> j <span style="color:#f92672">=</span> 2<span style="color:#f92672">*</span>k;
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (j <span style="color:#f92672">&lt;</span> n <span style="color:#f92672">&amp;&amp;</span> greater(j, j<span style="color:#f92672">+</span>1)) j<span style="color:#f92672">++</span>;
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>greater(k, j)) <span style="color:#66d9ef">break</span>;
+</span></span><span style="display:flex;"><span>        exch(k, j);
+</span></span><span style="display:flex;"><span>        k <span style="color:#f92672">=</span> j;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div>
+      </div>
+    </article>
+
+    <hr />
+
+    <div class="post-info">
+      
+    <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg>
+
+        <span class="tag"><a href="https://whaleblog.github.io/tags/cs61b/">cs61b</a></span>
+        
+    </p>
+
+      
+    <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-folder meta-icon"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+
+        <span class="tag"><a href="https://whaleblog.github.io/categories/notes/">notes</a></span>
+        <span class="tag"><a href="https://whaleblog.github.io/categories/courses/">courses</a></span>
+        
+    </p>
+
+
+      <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+        299字
+      </p>
+
+      <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        
+          2024-07-30 18:08
+        
+
+         
+          
+        
+      </p>
+    </div>
+      <hr />
+      <div class="sharing-buttons">
+        
+
+  
+    
+    
+  
+
+
+
+
+  
+      
+        
+    
+  
+
+
+
+
+  
+    
+      
+    
+  
+
+
+
+
+  
+    
+    
+  
+
+
+
+
+  
+    
+    
+  
+
+
+
+
+  
+    
+    
+  
+
+
+
+
+  
+    
+    
+  
+
+
+
+
+  
+    
+    
+  
+
+
+
+
+  
+    
+    
+  
+
+
+
+
+  
+			
+    
+  
+
+
+
+
+  
+      
+    
+  
+
+
+<style>
+.social-icons {
+  display: flex;
+  align-items: center;
+  gap: 20px;  
+  margin-top: 15px;
+}
+.social-icons a svg {
+  width: 20px;  
+  height: 20px;
+}
+</style>
+
+<div class="social-icons">
+  
+  <a href="mailto:166845494@qq.com" target="_self" rel="noopener" aria-label="Email me" title="Email me">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+      <polyline points="22,6 12,13 2,6"></polyline>
+    </svg>
+  </a>
+
+  
+  <a href="https://github.com/WhaleFall-UESTC" target="_blank" rel="noopener" aria-label="Follow on GitHub" title="Follow on GitHub">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke-width="2">
+      <path d="M12 0C5.373 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.298 24 12c0-6.627-5.373-12-12-12z"/>
+    </svg>
+  </a>
+</div>
+
+      </div>
+
+    
+    <div class="pagination">
+        
+        <div class="pagination__title">
+            <span class="pagination__title-h">浏览其他文章</span>
+            <hr />
+        </div>
+        
+
+        <div class="pagination__buttons">
+            
+            <span class="button previous">
+                <a href="https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;shortest&#43;paths/">
+                    <span class="button__icon">←</span>
+                    <span class="button__text">CS61B 学习笔记 - Shortest Paths</span>
+                </a>
+            </span>
+            
+
+            
+            <span class="button next">
+                <a href="https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;hash&#43;code/">
+                    <span class="button__text">CS61B 学习笔记 - Hash Code</span>
+                    <span class="button__icon">→</span>
+                </a>
+            </span>
+            
+        </div>
+    </div>
+
+
+    
+
+    
+
+    
+
+  </main>
+
+            </div>
+
+            
+                <footer class="footer">
+    
+    
+</footer>
+
+            
+        </div>
+
+        
+
+
+
+<script type="text/javascript" src="/bundle.min.ac2a4bcaed631ec2dc154407be7f09fc28da37de71fae6dee6711b2a3d1622770f87d3cda22c460e9a68ff619bdb1dd75cb7a5d33f159a54e419736cc4541087.js" integrity="sha512-rCpLyu1jHsLcFUQHvn8J/CjaN95x&#43;ube5nEbKj0WIncPh9PNoixGDppo/2Gb2x3XXLel0z8VmlTkGXNsxFQQhw=="></script>
+
+
+
+
+    </body>
+</html>

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh">
+    <head>
+        <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="author" content="">
+<meta name="description" content="Meltdown 是一种利用了 CPU 预测执行的攻击手段。如它的名字一样，它”溶解“了用户空间与内核空间的隔离性。详细内容可以访问 https://meltdownattack.com 查看
+在这个网站里面还记录了另一个漏洞 Spectre。Intel 的芯片被指出均存在 Meltdown 漏洞, 而 Spectre 漏洞则是危害着所有架构的芯片, 无一幸免。这两个可谓目前为止体系结构历史上影响最大的漏洞了
+在有关这个漏洞发布时（2018），大部分操作系统都会将内核内存完整映射到用户空间程序，因为这使得当发生系统调用时，你不用切换 Page Table，也不必清空各种缓存。所以所有的内核 PTE 都会出现在用户程序的 Page Table 中，但是因为这些 PTE 的 PTE_U 比特位没有被设置，用户代码并不能实际的使用内核内存地址
+但是 Meltdown 找到了一种方法，可以在没有权限的情况下读取特定地址的比特位。接下来会讲攻击者利用的两个技巧，一个是预测执行，一个是 CPU 缓存
+学生提问：所以为了能够攻击，需要先知道内核的虚拟内存地址？
+Robert 教授：是的。或许找到内存地址本身就很难，但是你需要假设攻击者有无限的时间和耐心，如果他们在找某个数据，他们或许愿意花费几个月的时间来窃取这个数据。有可能这是某人用来登录银行账号或者邮件用的密码。这意味着攻击者可能需要尝试每一个内核内存地址，以查找任何有价值的数据。
+在这个攻守双方的游戏中，我们需要假设攻击者最后可以胜出并拿到内核的虚拟内存地址。所以我们会假设攻击者要么已经知道了一个内核虚拟地址，要么愿意尝试每一个内核虚拟内存地址。
+Speculative execution 预测执行是一种用来提升 CPU 性能的技术。假设我们运行如下代码：
+r0 = &amp;lt;something&amp;gt; r1 = valid if (r1 == 1) { r2 = *r0 r3 = r2 &#43; 1 } else { r3 = 0 } /* r0, r1, r2, r3 are registers, valid is in RAM */ 任何一个需要从内存中读取数据的 load 指令都会花费 2GHZ CPU 的数百个 CPU cycle，在 r1 获取 valid 值时亦是如此" />
+<meta name="keywords" content=", mit-6.s081" />
+<meta name="robots" content="noodp" />
+<meta name="theme-color" content="" />
+<link rel="canonical" href="https://whaleblog.github.io/posts/meltdown/" />
+
+
+    <title>
+        
+            Meltdown :: WhaleFall&#39;s Blog 
+        
+    </title>
+
+
+
+
+
+  <link rel="stylesheet" href="/main.min.ab5336003ba331300318b49292c672210905baf1ef5410a739f647e70c8808fa.css" integrity="sha256-q1M2ADujMTADGLSSksZyIQkFuvHvVBCnOfZH5wyICPo=" crossorigin="anonymous">
+
+
+
+
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <meta name="msapplication-TileColor" content="">
+
+
+<meta itemprop="name" content="Meltdown">
+<meta itemprop="description" content="Meltdown 是一种利用了 CPU 预测执行的攻击手段。如它的名字一样，它”溶解“了用户空间与内核空间的隔离性。详细内容可以访问 https://meltdownattack.com 查看
+在这个网站里面还记录了另一个漏洞 Spectre。Intel 的芯片被指出均存在 Meltdown 漏洞, 而 Spectre 漏洞则是危害着所有架构的芯片, 无一幸免。这两个可谓目前为止体系结构历史上影响最大的漏洞了
+在有关这个漏洞发布时（2018），大部分操作系统都会将内核内存完整映射到用户空间程序，因为这使得当发生系统调用时，你不用切换 Page Table，也不必清空各种缓存。所以所有的内核 PTE 都会出现在用户程序的 Page Table 中，但是因为这些 PTE 的 PTE_U 比特位没有被设置，用户代码并不能实际的使用内核内存地址
+但是 Meltdown 找到了一种方法，可以在没有权限的情况下读取特定地址的比特位。接下来会讲攻击者利用的两个技巧，一个是预测执行，一个是 CPU 缓存
+学生提问：所以为了能够攻击，需要先知道内核的虚拟内存地址？
+Robert 教授：是的。或许找到内存地址本身就很难，但是你需要假设攻击者有无限的时间和耐心，如果他们在找某个数据，他们或许愿意花费几个月的时间来窃取这个数据。有可能这是某人用来登录银行账号或者邮件用的密码。这意味着攻击者可能需要尝试每一个内核内存地址，以查找任何有价值的数据。
+在这个攻守双方的游戏中，我们需要假设攻击者最后可以胜出并拿到内核的虚拟内存地址。所以我们会假设攻击者要么已经知道了一个内核虚拟地址，要么愿意尝试每一个内核虚拟内存地址。
+Speculative execution 预测执行是一种用来提升 CPU 性能的技术。假设我们运行如下代码：
+r0 = &lt;something&gt; r1 = valid if (r1 == 1) { r2 = *r0 r3 = r2 &#43; 1 } else { r3 = 0 } /* r0, r1, r2, r3 are registers, valid is in RAM */ 任何一个需要从内存中读取数据的 load 指令都会花费 2GHZ CPU 的数百个 CPU cycle，在 r1 获取 valid 值时亦是如此"><meta itemprop="datePublished" content="2024-08-31T21:07:01+00:00" />
+<meta itemprop="dateModified" content="2024-08-31T21:07:01+00:00" />
+<meta itemprop="wordCount" content="471"><meta itemprop="image" content="https://whaleblog.github.io/" />
+<meta itemprop="keywords" content="mit-6.s081," />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content="https://whaleblog.github.io/" /><meta name="twitter:title" content="Meltdown"/>
+<meta name="twitter:description" content="Meltdown 是一种利用了 CPU 预测执行的攻击手段。如它的名字一样，它”溶解“了用户空间与内核空间的隔离性。详细内容可以访问 https://meltdownattack.com 查看
+在这个网站里面还记录了另一个漏洞 Spectre。Intel 的芯片被指出均存在 Meltdown 漏洞, 而 Spectre 漏洞则是危害着所有架构的芯片, 无一幸免。这两个可谓目前为止体系结构历史上影响最大的漏洞了
+在有关这个漏洞发布时（2018），大部分操作系统都会将内核内存完整映射到用户空间程序，因为这使得当发生系统调用时，你不用切换 Page Table，也不必清空各种缓存。所以所有的内核 PTE 都会出现在用户程序的 Page Table 中，但是因为这些 PTE 的 PTE_U 比特位没有被设置，用户代码并不能实际的使用内核内存地址
+但是 Meltdown 找到了一种方法，可以在没有权限的情况下读取特定地址的比特位。接下来会讲攻击者利用的两个技巧，一个是预测执行，一个是 CPU 缓存
+学生提问：所以为了能够攻击，需要先知道内核的虚拟内存地址？
+Robert 教授：是的。或许找到内存地址本身就很难，但是你需要假设攻击者有无限的时间和耐心，如果他们在找某个数据，他们或许愿意花费几个月的时间来窃取这个数据。有可能这是某人用来登录银行账号或者邮件用的密码。这意味着攻击者可能需要尝试每一个内核内存地址，以查找任何有价值的数据。
+在这个攻守双方的游戏中，我们需要假设攻击者最后可以胜出并拿到内核的虚拟内存地址。所以我们会假设攻击者要么已经知道了一个内核虚拟地址，要么愿意尝试每一个内核虚拟内存地址。
+Speculative execution 预测执行是一种用来提升 CPU 性能的技术。假设我们运行如下代码：
+r0 = &lt;something&gt; r1 = valid if (r1 == 1) { r2 = *r0 r3 = r2 &#43; 1 } else { r3 = 0 } /* r0, r1, r2, r3 are registers, valid is in RAM */ 任何一个需要从内存中读取数据的 load 指令都会花费 2GHZ CPU 的数百个 CPU cycle，在 r1 获取 valid 值时亦是如此"/>
+
+
+
+    <meta property="og:title" content="Meltdown" />
+<meta property="og:description" content="Meltdown 是一种利用了 CPU 预测执行的攻击手段。如它的名字一样，它”溶解“了用户空间与内核空间的隔离性。详细内容可以访问 https://meltdownattack.com 查看
+在这个网站里面还记录了另一个漏洞 Spectre。Intel 的芯片被指出均存在 Meltdown 漏洞, 而 Spectre 漏洞则是危害着所有架构的芯片, 无一幸免。这两个可谓目前为止体系结构历史上影响最大的漏洞了
+在有关这个漏洞发布时（2018），大部分操作系统都会将内核内存完整映射到用户空间程序，因为这使得当发生系统调用时，你不用切换 Page Table，也不必清空各种缓存。所以所有的内核 PTE 都会出现在用户程序的 Page Table 中，但是因为这些 PTE 的 PTE_U 比特位没有被设置，用户代码并不能实际的使用内核内存地址
+但是 Meltdown 找到了一种方法，可以在没有权限的情况下读取特定地址的比特位。接下来会讲攻击者利用的两个技巧，一个是预测执行，一个是 CPU 缓存
+学生提问：所以为了能够攻击，需要先知道内核的虚拟内存地址？
+Robert 教授：是的。或许找到内存地址本身就很难，但是你需要假设攻击者有无限的时间和耐心，如果他们在找某个数据，他们或许愿意花费几个月的时间来窃取这个数据。有可能这是某人用来登录银行账号或者邮件用的密码。这意味着攻击者可能需要尝试每一个内核内存地址，以查找任何有价值的数据。
+在这个攻守双方的游戏中，我们需要假设攻击者最后可以胜出并拿到内核的虚拟内存地址。所以我们会假设攻击者要么已经知道了一个内核虚拟地址，要么愿意尝试每一个内核虚拟内存地址。
+Speculative execution 预测执行是一种用来提升 CPU 性能的技术。假设我们运行如下代码：
+r0 = &lt;something&gt; r1 = valid if (r1 == 1) { r2 = *r0 r3 = r2 &#43; 1 } else { r3 = 0 } /* r0, r1, r2, r3 are registers, valid is in RAM */ 任何一个需要从内存中读取数据的 load 指令都会花费 2GHZ CPU 的数百个 CPU cycle，在 r1 获取 valid 值时亦是如此" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://whaleblog.github.io/posts/meltdown/" /><meta property="og:image" content="https://whaleblog.github.io/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2024-08-31T21:07:01+00:00" />
+<meta property="article:modified_time" content="2024-08-31T21:07:01+00:00" />
+
+
+
+
+
+    <meta property="article:section" content="notes" />
+
+    <meta property="article:section" content="courses" />
+
+
+
+    <meta property="article:published_time" content="2024-08-31 21:07:01 &#43;0000 UTC" />
+
+
+
+
+
+
+
+
+
+
+
+
+    </head>
+
+    
+        <body>
+    
+    
+        <div class="container">
+            <header class="header">
+    <span class="header__inner">
+        <a href="/" style="text-decoration: none;">
+    <div class="logo">
+        
+            <span class="logo__mark">></span>
+            <span class="logo__text ">
+                WhaleFall</span>
+            <span class="logo__cursor" style=
+                  "
+                   
+                   ">
+            </span>
+        
+    </div>
+</a>
+
+
+        <span class="header__right">
+                <nav class="menu">
+    <ul class="menu__inner"><li><a href="/about">About</a></li><li><a href="/posts">Blog</a></li><li><a href="/tags">Tags</a></li>
+    </ul>
+</nav>
+
+                <span class="menu-trigger">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                    </svg>
+                </span>
+        </span>
+    </span>
+</header>
+
+
+            <div class="content">
+                
+  <main class="post">
+
+    <div class="post-info">
+      <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        3分钟阅读
+
+        
+      </p>
+    </div>
+
+    <article>
+      <h1 class="post-title">
+        <a href="https://whaleblog.github.io/posts/meltdown/">Meltdown</a>
+      </h1>
+
+      
+
+      
+
+      
+
+      <div class="post-content">
+        <p>Meltdown 是一种利用了 CPU 预测执行的攻击手段。如它的名字一样，它”溶解“了用户空间与内核空间的隔离性。详细内容可以访问 <a href="https://meltdownattack.com">https://meltdownattack.com</a> 查看</p>
+<p>在这个网站里面还记录了另一个漏洞 Spectre。Intel 的芯片被指出均存在 Meltdown 漏洞, 而 Spectre 漏洞则是危害着所有架构的芯片, 无一幸免。这两个可谓目前为止体系结构历史上影响最大的漏洞了</p>
+<p>在有关这个漏洞发布时（2018），大部分操作系统都会将内核内存完整映射到用户空间程序，因为这使得当发生系统调用时，你不用切换 Page Table，也不必清空各种缓存。所以所有的内核 PTE 都会出现在用户程序的 Page Table 中，但是因为这些 PTE 的 PTE_U 比特位没有被设置，用户代码并不能实际的使用内核内存地址</p>
+<p>但是 Meltdown 找到了一种方法，可以在没有权限的情况下读取特定地址的比特位。接下来会讲攻击者利用的两个技巧，一个是预测执行，一个是 CPU 缓存</p>
+<blockquote>
+<p>学生提问：所以为了能够攻击，需要先知道内核的虚拟内存地址？</p>
+<p>Robert 教授：是的。或许找到内存地址本身就很难，但是你需要假设攻击者有无限的时间和耐心，如果他们在找某个数据，他们或许愿意花费几个月的时间来窃取这个数据。有可能这是某人用来登录银行账号或者邮件用的密码。这意味着攻击者可能需要尝试每一个内核内存地址，以查找任何有价值的数据。</p>
+<p>在这个攻守双方的游戏中，我们需要假设攻击者最后可以胜出并拿到内核的虚拟内存地址。所以我们会假设攻击者要么已经知道了一个内核虚拟地址，要么愿意尝试每一个内核虚拟内存地址。</p>
+</blockquote>
+<h2 id="speculative-execution">Speculative execution</h2>
+<p>预测执行是一种用来提升 CPU 性能的技术。假设我们运行如下代码：</p>
+<pre><code>r0 = &lt;something&gt;
+r1 = valid
+if (r1 == 1) {
+  r2 = *r0
+  r3 = r2 + 1
+} else {
+  r3 = 0
+}
+/* r0, r1, r2, r3 are registers, valid is in RAM */
+</code></pre>
+<p>任何一个需要从内存中读取数据的 load 指令都会花费 2GHZ CPU 的数百个 CPU cycle，在 r1 获取 valid 值时亦是如此</p>
+<p>现在的 CPU 都使用了叫做 branch prediction 的功能</p>
+<p>CPU 在知道第 3 行代码是否为 true 之前，它会选择某一个 branch 并开始执行。或许 branch 选错了，但是 CPU 现在还不知道</p>
+<p>或许在第 2 行的 load 结束前，也就是在知道valid变量的值之前，CPU会开始执行第 4 行的指令</p>
+<p>为了能回滚误判的预测执行，CPU 需要将寄存器值保存在别处。虽然代码中第 4 行，第5行将值保存在了 r2，r3，但是实际上是保存在了临时寄存器中。如果 CPU 赌对了，那么这些临时寄存器就成了真实寄存器，如果赌错了，CPU 会抛弃临时寄存器，这样代码第 4，5 行就像从来没有发生过一样</p>
+<p>对于我们来说，更有趣的一个问题是，<strong>如果r0中的指针不是一个有效的指针，会发生什么</strong>？如果 r0 中的指针不是一个有效的地址，并且我们在超前执行代码第4行，<strong>机器不会产生 Fault</strong>。因为它不能确定代码第 4 行是否是一个正确的代码分支，因为有可能 CPU 赌错了。所以<strong>直到 CPU 知道了 valid 变量的内容，否则 CPU 不能在代码第 4 行生成 Page Fault</strong>。也就是说，如果 CPU 发现代码第 4 行中 r0 内的地址是无效的，且 valid 变量为 1，这时机器才会生成 Page Fault。所以是否要产生 Page Fault 的决定，可能会推迟数百个 CPU cycle，直到 valid 变量的值被确定</p>
+<p>当我们确定一条指令是否正确的超前执行了而不是被抛弃了这个时间点，对应的技术术语是 Retired。一条指令 Retired 需要满足两个条件：首先它自己要结束执行，其次，所有之前的指令也需要 Retired</p>
+<p>如果 r0 中的内存地址是无效的，且在 Page Table 中完全没有映射关系，那么我也不知道会发生什么。如果 r0 中的内存地址在 Page Table 中存在映射关系，只是现在权限不够，那么 <strong>Intel 的 CPU 会加载内存地址对应的数据，并存储在 r2 寄存器的临时版本中</strong></p>
+<blockquote>
+<p>学生提问：我对CPU的第二个预测，也就是从r0中保存的内存地址加载数据有一些困惑，这是不是意味着r0对应的数据先被加载到了r2，然后再检查PTE的标志位？</p>
+<p>Robert 教授：完全正确。在预测的阶段，不论r0指向了什么地址，只要它指向了任何东西，内存中的数据会被加载到r2中。之后，当load指令Retired时才会检查权限。如果我们并没有权限做操作，所有的后续指令的效果会被取消，也就是对于寄存器的所有修改会回滚。同时，Page Fault会被触发，同时寄存器的状态就像是预测执行的指令没有执行过一样</p>
+<p>学生提问：难道不能限制CPU在Speculative execution的时候，先检查权限，再执行load指令吗</p>
+<p>Robert教授：Intel芯片并不是这样工作的。Meltdown Attack 并不会在 AMD CPU 上生效。普遍接受的观点是，AMD CPU 在 Speculative execution 时，如果没有权限读取内存地址，是不会将内存地址中的数据读出</p>
+<p>学生提问：我们应该为预测执行指令检查权限标志位吗？Intel的回答是不，为什么要检查呢？</p>
+<p>Robert 教授：如果更早的做权限检查，会在CPU核和L1 cache之间增加几个数字电路门，而CPU核和L1 cache之间路径的性能对于机器来说重要的，如果你能在这节省一些数字电路门的话，这可以使得你的CPU节省几个cycle来从L1 cache获取数据，进而更快的运行程序</p>
+</blockquote>
+<h2 id="cpu-caches">CPU caches</h2>
+<p>当 CPU 需要执行 load/store 指令时，CPU 会与内存系统通信。内存系统一些 cache 其中包含了数据的缓存。首先是 L1 data cache，它或许有 64KB，虽然不太大，但是它特别的快。L1 cache 的缓存由虚拟地址索引，如果 L1 中没有找到，我们就需要物理内存地址，这里需要 TLB。我们假设 TLB 中包含了虚拟内存地址对应的物理内存 Page 地址，我们就可以获取到所需要的物理内存地址。通常来说会有一个更大的 cache（L2 cache），它是由物理内存地址索引。如果 L2 中也没有，就要跑到内存中找，这会花费很长的时间。当我们最终获得了数据时，我们可以将从 RAM 读取到的数据加入到 L1 和 L2 cache 中，最终将数据返回给 CPU</p>
+<p>L1 命中的话可能只要几个 CPU cycle，L2 命中的话，可能要几十个 CPU cycle，如果都没有命中最后需要从内存中读取那么会需要几百个 CPU cycle</p>
+<h2 id="flush-and-reload">Flush and Reload</h2>
+<p>Meltdown 的实现还需要一种技术，我们需要知道一段代码是否动过一个特定的内存，Flush and Reload 就可以做到这一点。简单来说就是先清空 cache，保证这段特定的内存没有被 cache；然后执行特定的代码；接着读取这段内存，如果速度很快的话，就说明这段内存被重新 cache 了，即刚刚运行的代码动过这段内存</p>
+<p>关于清空 cache，Intel 提供了一条指令，叫做 clflush，它接收一个内存地址作为参数，并确保该内存地址不在任何 cache 中。这直接实现了我们的目的。即使没有这条指令，我们可以 load 64KB 随机数据将原本的 cache 冲走</p>
+<p>对读取速度的测量，我们可以使用 rdtsc。Intel CPU 会提供指令来向你返回 CPU cycle 的数量。执行 rdtsc 指令，它会返回 CPU 启动之后总共经过了多少个 CPU cycle</p>
+<h2 id="meltdown-attack">Meltdown Attack</h2>
+<p>在有以上前置知识之后，可以来看看 Meltdown 了</p>
+<pre><code>char buf[8192]
+
+// Flush. Make sure buf[0] and buf[4096] are not cached
+clflush buf[0]
+clflush buf[4096]
+
+&lt;some expensive inst like div, sqrt&gt;
+
+r1 = &lt;a kernel virtual addr&gt;
+r2 = *r1
+r2 = r2 &amp; 1
+r2 = r2 * 4096
+r3 = buf[r2]
+
+&lt;handle page fault from &quot;r2 = *r1&quot;&gt;
+
+// Reload. Test time
+a = rdstc
+r0 = buf[0]
+b = rdstc
+r1 = buf[4096]
+c = rdstc
+if b - a &lt; c - b
+  low bit is probably a 0
+</code></pre>
+<p>首先我们 clflush 保证 buf[0] 和 buf[4096] 不在 cache 中。之所以差这么大，是为了防止 load 的时候，硬件会从内存中再加载相邻的几个数据到 cache 中，我们不希望在加载 buf[a] 时把 buf[b] 也带上了</p>
+<p>接下来会调用一些非常耗时的指令。这些耗时的指令同样会被预测执行，即在结果出来之前，会提前执行后面的内容。这样，在 <code>r2 = *r1</code> 实际产生 Page Fault 前，还要等待这些耗时指令 Retired。这样可以争取时间，我们需要保证在 load buf[r2] 被预测执行</p>
+<p><code>r3 = buf[r2]</code> 虽然不会对寄存器产生直接影响，但是这会导致 buf[r2] 被 cache</p>
+<p>Page Fault 最终还是会发生，但是现代的 OS 又给予了用户程序操作内存的接口。我们可以用 sigaction 注册一个 Page Fault Handler，并且在Page Fault 之后重新获得控制</p>
+<p>之后我们重新 load buf[0] 与 buf[4096]，比较二者的 load 时间。若是 buf[0] 的读取时间短，则说明很大可能当时 r3 load 的是 buf[0]，也就是说，那个内核虚拟地址所在的 bit 是 0，反之为 1</p>
+<p>我们通过这种方式读取内核空间的数据</p>
+<p>这种攻击可以用与这些场合：第一种是云计算：如果你使用了云服务商，它会在同一个计算机上运行多个用户的业务，那么你或许就可以窥探其他运行在同一个机器上的用户软件的内存；另一个可能有用的场景是，当你的浏览器在访问 web 时，你的浏览器其实运行了很多不被信任的代码，或许是以插件的形式，或是以 javascript 的形式。这些代码会被加载到浏览器，然后被编译并被运行</p>
+<p>很多操作系统在论文发表之后数周内就推出的一个快速修复，叫做 KAISER，现在在 Linux 中被称为 KPTI 的技术（Kernel page-table isolation）。这里的想法很简单，也就是不将内核内存映射到用户的 Page Table 中。这样一来就会有 Page Table 的切换，并且因为现在的用户页表并没有包含对 r1 存储的内核虚拟地址的翻译，r2 无法读取，Meltdown Attack 也就不能工作了，缺点是系统调用的代价更高了</p>
+<p>除此之外，还有一个合理的硬件修复：CPU 完全可以在获取数据的时候检查权限标志位，如果检查不能通过，CPU 不会返回数据到 CPU 核中</p>
+
+      </div>
+    </article>
+
+    <hr />
+
+    <div class="post-info">
+      
+    <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg>
+
+        <span class="tag"><a href="https://whaleblog.github.io/tags/mit-6.s081/">mit-6.s081</a></span>
+        
+    </p>
+
+      
+    <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-folder meta-icon"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+
+        <span class="tag"><a href="https://whaleblog.github.io/categories/notes/">notes</a></span>
+        <span class="tag"><a href="https://whaleblog.github.io/categories/courses/">courses</a></span>
+        
+    </p>
+
+
+      <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+        471字
+      </p>
+
+      <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        
+          2024-09-01 05:07
+        
+
+         
+          
+        
+      </p>
+    </div>
+      <hr />
+      <div class="sharing-buttons">
+        
+
+  
+    
+    
+  
+
+
+
+
+  
+      
+        
+    
+  
+
+
+
+
+  
+    
+      
+    
+  
+
+
+
+
+  
+    
+    
+  
+
+
+
+
+  
+    
+    
+  
+
+
+
+
+  
+    
+    
+  
+
+
+
+
+  
+    
+    
+  
+
+
+
+
+  
+    
+    
+  
+
+
+
+
+  
+    
+    
+  
+
+
+
+
+  
+			
+    
+  
+
+
+
+
+  
+      
+    
+  
+
+
+<style>
+.social-icons {
+  display: flex;
+  align-items: center;
+  gap: 20px;  
+  margin-top: 15px;
+}
+.social-icons a svg {
+  width: 20px;  
+  height: 20px;
+}
+</style>
+
+<div class="social-icons">
+  
+  <a href="mailto:166845494@qq.com" target="_self" rel="noopener" aria-label="Email me" title="Email me">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+      <polyline points="22,6 12,13 2,6"></polyline>
+    </svg>
+  </a>
+
+  
+  <a href="https://github.com/WhaleFall-UESTC" target="_blank" rel="noopener" aria-label="Follow on GitHub" title="Follow on GitHub">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke-width="2">
+      <path d="M12 0C5.373 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.298 24 12c0-6.627-5.373-12-12-12z"/>
+    </svg>
+  </a>
+</div>
+
+      </div>
+
+    
+    <div class="pagination">
+        
+        <div class="pagination__title">
+            <span class="pagination__title-h">浏览其他文章</span>
+            <hr />
+        </div>
+        
+
+        <div class="pagination__buttons">
+            
+            <span class="button previous">
+                <a href="https://whaleblog.github.io/posts/virtual&#43;machines/">
+                    <span class="button__icon">←</span>
+                    <span class="button__text">Virtual Machines</span>
+                </a>
+            </span>
+            
+
+            
+            <span class="button next">
+                <a href="https://whaleblog.github.io/posts/%E5%AE%8F%E5%86%85%E6%A0%B8%E4%B8%8E%E5%BE%AE%E5%86%85%E6%A0%B8/">
+                    <span class="button__text">宏内核与微内核</span>
+                    <span class="button__icon">→</span>
+                </a>
+            </span>
+            
+        </div>
+    </div>
+
+
+    
+
+    
+
+    
+
+  </main>
+
+            </div>
+
+            
+                <footer class="footer">
+    
+    
+</footer>
+
+            
+        </div>
+
+        
+
+
+
+<script type="text/javascript" src="/bundle.min.ac2a4bcaed631ec2dc154407be7f09fc28da37de71fae6dee6711b2a3d1622770f87d3cda22c460e9a68ff619bdb1dd75cb7a5d33f159a54e419736cc4541087.js" integrity="sha512-rCpLyu1jHsLcFUQHvn8J/CjaN95x&#43;ube5nEbKj0WIncPh9PNoixGDppo/2Gb2x3XXLel0z8VmlTkGXNsxFQQhw=="></script>
+
+
+
+
+    </body>
+</html>

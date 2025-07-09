@@ -20,5 +20,2131 @@
 ]]></content>
         </item>
         
+        <item>
+            <title>Performance Analysis and Tuning on Morden CPUs</title>
+            <link>https://whaleblog.github.io/posts/performance&#43;analysis&#43;and&#43;tuning&#43;on&#43;morden&#43;cpus/</link>
+            <pubDate>Sat, 07 Dec 2024 01:46:33 +0000</pubDate>
+            
+            <guid>https://whaleblog.github.io/posts/performance&#43;analysis&#43;and&#43;tuning&#43;on&#43;morden&#43;cpus/</guid>
+            <description>写得有点乱&amp;hellip;&amp;hellip;等有经验之后再来优化一下吧</description>
+            <content type="html"><![CDATA[<p>写得有点乱&hellip;&hellip;等有经验之后再来优化一下吧</p>
+<p><img src="/upload/%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90%E6%96%B9%E6%B3%95.png"></p>
+<p><img src="/upload/%E5%9F%BA%E4%BA%8E%E6%BA%90%E4%BB%A3%E7%A0%81%E7%9A%84CPU%E8%B0%83%E4%BC%98%20conv%201.png"></p>
+]]></content>
+        </item>
+        
+        <item>
+            <title>Virtual Machines</title>
+            <link>https://whaleblog.github.io/posts/virtual&#43;machines/</link>
+            <pubDate>Sun, 01 Sep 2024 13:42:00 +0000</pubDate>
+            
+            <guid>https://whaleblog.github.io/posts/virtual&#43;machines/</guid>
+            <description>Host &amp;amp; Guest 虚拟机是对于计算机的模拟，顾名思义。QEMU 可以说是虚拟机的一个例子
+在虚拟机架构的最底层，位于硬件之上存在一个 Virtual Machine Monitor（VMM），它取代了标准的操作系统内核。VMM 的工作是模拟多个计算机用来运行 Guest 操作系统。VMM 往上一层是 Guest 空间，对比一个操作系统的用户空间
+在 Host 空间运行的是VMM，在 Guest 空间运行的是普通的操作系统。除此之外，在 Guest 空间又可以分为 Guest Supervisor Mode 和 Guest User Mode
+我们的目的是让运行在 Guest 中的代码完全不能区分自己是运行在一个虚拟机还是物理机中，因为我们希望能在虚拟机中运行任何操作系统。这意味着对于任何操作系统的行为包括使用硬件的方式，虚拟机都必须提供提供对于硬件的完全相同的模拟，这样任何在真实硬件上能工作的代码，也同样能在虚拟机中工作；我们同样不希望 Guest 从虚拟机中逃逸
+但是实际中出于性能的考虑，很难做到完全的模拟。出于效率的考虑，在 VMM 允许的前提下，Linux 某些时候知道自己正在与 VMM 交互，以获得对于设备的高速访问权限。不过实现虚拟机的大致策略还是完全准确的模拟物理服务器
+Trap-and-Emulate How to build VMM 一种构建 VMM 的方式是完全通过软件模拟（比如用数组模拟寄存器，用 C 代码模拟指令行为），但是很慢，因为你的 VMM 在解析每一条 Guest 指令的时候，都可能要转换成几十条实际的机器指令，这会导致运行速度慢几个数量级。
+相应的，一种广泛使用的策略是在真实的 CPU 上运行 Guest 指令。但是前面说过，我们将 Guest kernel 按照一个 Linux 中的普通用户进程来运行，所以 Guest kernel 现在运行在 User mode，这样在运行 privileged 指令时又会出现问题。但是如果我们蠢到将 Guest kernel 运行在宿主机的 Supervisor mode。那么我们的 Guest kernel 不仅能够修改真实的 Page Table，同时也可以从虚拟机中逃逸，因为它现在可以控制 PTE（Page Table Entry）的内容，并且读写任意的内存内容</description>
+            <content type="html"><![CDATA[<h2 id="host--guest">Host &amp; Guest</h2>
+<p>虚拟机是对于计算机的模拟，顾名思义。QEMU 可以说是虚拟机的一个例子</p>
+<p>在虚拟机架构的最底层，位于硬件之上存在一个 Virtual Machine Monitor（VMM），它取代了标准的操作系统内核。VMM 的工作是模拟多个计算机用来运行 Guest 操作系统。VMM 往上一层是 Guest 空间，对比一个操作系统的用户空间</p>
+<p>在 Host 空间运行的是VMM，在 Guest 空间运行的是普通的操作系统。除此之外，在 Guest 空间又可以分为 Guest Supervisor Mode 和 Guest User Mode</p>
+<p>我们的目的是让运行在 Guest 中的代码完全不能区分自己是运行在一个虚拟机还是物理机中，因为我们希望能在虚拟机中运行任何操作系统。这意味着对于任何操作系统的行为包括使用硬件的方式，虚拟机都必须提供提供对于硬件的完全相同的模拟，这样任何在真实硬件上能工作的代码，也同样能在虚拟机中工作；我们同样不希望 Guest 从虚拟机中逃逸</p>
+<p>但是实际中出于性能的考虑，很难做到完全的模拟。出于效率的考虑，在 VMM 允许的前提下，Linux 某些时候知道自己正在与 VMM 交互，以获得对于设备的高速访问权限。不过实现虚拟机的大致策略还是完全准确的模拟物理服务器</p>
+<h2 id="trap-and-emulate">Trap-and-Emulate</h2>
+<h3 id="how-to-build-vmm">How to build VMM</h3>
+<p>一种构建 VMM 的方式是完全通过软件模拟（比如用数组模拟寄存器，用 C 代码模拟指令行为），但是很慢，因为你的 VMM 在解析每一条 Guest 指令的时候，都可能要转换成几十条实际的机器指令，这会导致运行速度慢几个数量级。</p>
+<p>相应的，一种广泛使用的策略是在真实的 CPU 上运行 Guest 指令。但是前面说过，我们将 Guest kernel 按照一个 Linux 中的普通用户进程来运行，所以 Guest kernel 现在运行在 User mode，这样在运行 privileged 指令时又会出现问题。但是如果我们蠢到将 Guest kernel 运行在宿主机的 Supervisor mode。那么我们的 Guest kernel 不仅能够修改真实的 Page Table，同时也可以从虚拟机中逃逸，因为它现在可以控制 PTE（Page Table Entry）的内容，并且读写任意的内存内容</p>
+<p>相应的，这里会使用一些技巧</p>
+<h3 id="trap">Trap</h3>
+<p>一旦 Guest 操作系统需要使用 privileged 指令，它会触发 trap 走到 VMM 中，之后我们就可以获得控制权。VMM 可以查看是什么指令引起的trap，并做适当的处理。假如 Guest 要写入 SATP，VMM 处理这个 trap，但它可以使用一些 trick，而不是真的改变真实寄存器</p>
+<p>这里核心的点在于，我们自己写的可信赖的 VMM 运行在 Supervisor mode，而我们将不可信赖的 Guest kernel 运行在 User mode，通过一系列的处理使得 Guest kernel 看起来好像自己是运行在 Supervisor mode</p>
+<h3 id="emulate">Emulate</h3>
+<p>刚刚所说的 trick 是 Emulate</p>
+<p>VMM 会为每一个 Guest 维护一套虚拟状态信息。所以 VMM 里面会维护虚拟的 STVEC 寄存器，虚拟的 SEPC 寄存器以及其他所有的 privileged 寄存器。当 Guest 操作系统运行指令需要读取某个 privileged 寄存器时，首先会通过 trap 走到 VMM，VMM 会检查这条指令并发现这是一个比如说读取 SEPC 寄存器的指令，之后 VMM 会模拟这条指令，并将自己维护的虚拟 SEPC 寄存器，拷贝到 trapframe 的用户寄存器中（在 trap 的最后恢复寄存器时，会从 trapframe 中拷贝到真实寄存器，这里会将 a0 的值设置为虚拟的 SEPC 的值，作为函数返回值），再通过 sret 指令，使得 Guest 从 trap 中返回。最终，Guest 读到了 VMM 替自己保管的虚拟 SEPC 寄存器</p>
+<p>VMM 不使用真实的 privileged 寄存器，还有其他原因。比如 Guest 系统调用时，Guest 的 SCAUSE 寄存器会表明这是一个系统调用，而对于 VMM 来说却是因为指令越权。通常情况下，VMM 需要看到真实寄存器的值，而 Guest 操作系统需要能看到符合自己视角的寄存器的值</p>
+<p>在这种虚拟机的实现中，Guest 整个运行在用户空间，任何时候它想要执行需要 privilege 权限的指令时，会通过 trap 走到 VMM，VMM 可以模拟这些指令。这种实现风格叫做 Trap and Emulate</p>
+<p>除了保存控制寄存器，VMM 还需要保存 Guest 当前的 mode（这个可以通过 sret 知道），还需要跟踪当前模拟那个 CPU 保存 hartid</p>
+<p>继续上文返回的过程。当 Guest 执行 sret 从 Supervisor mode 进入到 User mode，VMM 会更新虚拟状态信息中的 mode 为 User mode，会将真实的 SEPC 设置成自己保存在虚拟状态信息中的虚拟 SEPC（之后 Guest 还要再硬件上执行），同时，还需要切换 Page table</p>
+<p>综上所述，Guest 中的用户代码，如果是普通的指令，就直接在硬件上执行。当 Guest 中的用户代码需要执行系统调用时，会通过执行 ECALL 指令走到 VMM 中，VMM 可以发现当前在虚拟状态信息中记录的 mode 是 User mode，并且发现当前执行的指令是 ECALL，之后 VMM 会更新虚拟状态信息以模拟一个真实的系统调用的 trap 状态：设置虚拟的 SEPC 为 ECALL 指令所在的程序地址（这是为 Guest 的 sret 准备）；将虚拟的 mode 更新成 Supervisor；将虚拟的 SCAUSE 设置为系统调用；将真实的 SEPC 设置成虚拟的 STVEC 寄存器。之后调用 sret 指令跳转到 Guest操作系统的 trap handler，也就是 STVEC 指向的地址</p>
+<h3 id="page-table">Page Table</h3>
+<p>我们不想让 VMM 只是简单的替 Guest 设置真实的 SATP 寄存器，因为这样的话 Guest 就可以访问任意的内存地址，而不只是 VMM 分配给它的内存地址，但是我们的确又需要做点什么，因为我们需要让 Guest 觉得 Page Table 被更新了</p>
+<p>真实的过程是，我们不能直接使用 Guest 操作系统的 Page Table，VMM 会生成一个新的 Page Table 来模拟 Guest 操作系统想要的 Page Table</p>
+<p>所以现在的 Page Table 翻译过程略微有点不一样，首先是 Guest kernel 包含了Page Table，但是这里是将 Guest 中的虚拟内存地址（gva）映射到了 Guest 的物理内存地址（gpa）。而 Guest 的物理地址是一个假象，VMM 不会真放在宿主机物理内存为 0 的起始点，甚至不会是连续的空间。相应的，VMM会为每个虚拟机维护一个映射表，将Guest物理内存地址映射到真实的物理内存地址（hpa）。这个映射表与 Page Table 类似，对于每个 VMM 分配给 Guest 的物理页，都有一条记录表明真实的物理页是什么</p>
+<p>当 Guest 向 SATP 寄存器写了一个新的 Page Table 时，在对应的 trap handler 中，VMM 会创建一个 Shadow Page Table，Shadow Page Table 的地址将会是 VMM 向真实 SATP 寄存器写入的值，它将 gva 映射到了 hpa。Shadow Page Table 是这么构建的：</p>
+<ol>
+<li>
+<p>从 Guest Page Table 中取出每一条记录，查看 gpa</p>
+</li>
+<li>
+<p>使用 VMM 中的映射关系，将 gpa 翻译成 hpa</p>
+</li>
+<li>
+<p>再将 gva 和 hpa 存放于 Shadow Page Table</p>
+</li>
+</ol>
+<p>在创建完之后，VMM 会将 Shadow Page Table 设置到真实的 SATP 寄存器中，再返回到 Guest 内核中</p>
+<p>所以，Guest kernel 认为自己使用的是一个正常的 Page Table，但是实际的硬件使用的是 Shadow Page Table。这种方式可以阻止 Guest 从被允许使用的内存中逃逸。Shadow Page Table 只能包含 VMM 分配给虚拟机的主机物理内存地址。Guest 不能向 Page Table 写入任何 VMM 未分配给 Guest 的内存地址</p>
+<p>但是若果是直接修改自己页表的 Entry，RISC-V 并不承诺可以立即观察到对于 PTE 的修改，在修改那一瞬间，你完全是不知道 PTE 被修改了。这需要 Guest 在修改后执行 sfence.vma 指令使硬件注意到修改。这个特权指令会触发 trap，然后 VMM 会检查修改的合法性</p>
+<h3 id="devices">Devices</h3>
+<p>对于虚拟机外部设备的模拟，人们通常拥有 3 种方案：</p>
+<p>第一种是对真实设备的模拟。以磁盘为例，Guest 并不是拥有一个真正的磁盘设备，只是 VMM 使得与 Guest 交互的磁盘看起来好像真的存在一样。VMM 会将设备 Memory Map 控制寄存器本来映射在特定位置的页设置成无效，当 Guest 希望与设备进行交互的时候就会触发 trap，VMM 就可以模拟设备的行为</p>
+<p>显然易见，这种实现的方式极其低效，因为 VMM trap 的开销极高。但是如果你的目标就是能启动操作系统并使得它们完全不知道自己运行在虚拟机上，你只能使用这种策略</p>
+<p>第二种策略是提供虚拟设备，而不是模拟一个真实的设备。策略二并没有卑微地模仿真实的设备，某些设计人员提出了一种设备驱动，这种设备驱动并不对接任何真实的硬件设备，而是只对接由VMM实现的虚拟设备。在内存中会有一个命令队列，Guest 操作系统将读写设备的命令写到队列中，之后 VMM 会从内存中读取这些命令，但是并不会将它们应用到磁盘中，而是将它们应用到一个文件，这个文件模拟了一个虚拟磁盘。这种驱动设计的并不需要很多trap，并且这种驱动与对应的虚拟设备是解耦的，并不需要立即的交互</p>
+<p>第三个策略是对于真实设备的 pass-through，这里典型的例子就是网卡。你可以配置你的网卡，使得它表现的就像多个独立的子网卡，每个 Guest 操作系统拥有其中一个子网卡。经过 VMM 的配置，Guest 操作系统可以直接与它在网卡上那一部分子网卡进行交互，并且效率非常的高</p>
+<h2 id="对虚拟机的硬件支持">对虚拟机的硬件支持</h2>
+<p>这里的硬件支持特指 Intel 的 VT-x</p>
+<p>硬件里有一套完全独立，专门为 Guest mode（这里的 Guest mode 是硬件的称呼）下使用的虚拟控制寄存器。在 Guest mode 下可以直接读写控制寄存器，但是读写的是寄存器保存在硬件中的拷贝，而不是真实的寄存器。这样 Guest 中的软件可以直接执行 privileged 指令来修改保存在硬件中的虚拟寄存器，而不是通过 trap 走到 VMM 来修改保存在软件中的虚拟寄存器</p>
+<p>硬件的 Guest mode 也被称为 non-root mode，对应的使用真实寄存器的 Host mode，也被称为 root mode，这些是为了防止虚拟机逃逸的措施</p>
+<p>现在当VMM想要创建一个新的虚拟机时，VMM需要配置硬件。在VMM的内存中，通过一个结构体与 VT-x 硬件进行交互。这个结构体称为 VMCS（注，Intel的术语，全称是Virtual Machine Control Structure）。当 VMM 要创建一个新的虚拟机时，它会先在内存中创建这样一个结构体，并填入一些配置信息和所有寄存器的初始值，之后 VMM 会告诉 VT-x 硬件说我想要运行一个新的虚拟机，并且虚拟机的初始状态存在于 VMCS 中</p>
+<p>通过硬件的支持，Guest 现在可以在不触发 trap 的前提下，直接执行普通的 privileged 指令。但是还是有一些原因需要让代码执行从 Guest 进入到 VMM 中，其中一个原因是调用 VMCALL 指令，另一个原因是设备中断，例如定时器中断会使得代码执行从 non-root 模式通过 trap 走到 VMM</p>
+<p>但是我们也不能让 Guest 任意的修改它的 Page Table，我们需要控制其能访问的内存。所以 VT-x 的方案中，还存在另一个重要的寄存器：EPT（Extended Page Table）。EPT 会指向一个 Page Table。当VMM启动一个 Guest kernel 时，VMM 会为 Guest kernel 设置好 EPT，并告诉硬件这个 EPT 是为了即将运行的虚拟机准备的</p>
+<p>之后，当计算机上的 MMU 在翻译 Guest 的虚拟内存地址时，它会先根据 Guest 设置好的 Page Table，将 Guest 虚拟地址（gva）翻译到 Guest 物理地址（gha）。之后再通过 EPT，将 Guest 物理地址（gha）翻译成主机物理地址（hpa）。硬件会为每一个 Guest 的每一个内存地址都自动完成这里的两次翻译。EPT 使得 VMM 可以控制 Guest 可以使用哪些内存地址。Guest 可以非常高效的设置任何想要的 Page Table，但是 Guest 能够使用的内存地址仍然被 EPT 所限制，而 EPT 由VMM所配置</p>
+<p>另外，每一个 CPU 核都有一套独立的 VT-x 硬件。所以每一个 CPU 核都有属于自己的 32个通用寄存器，属于自己的真实的控制寄存器，属于自己的用在 Guest mode 下的虚拟控制寄存器，属于自己的 EPT</p>
+<p>我们也可以利用这个机制去运行一些不被信任的代码（比如浏览器插件和 js）</p>
+]]></content>
+        </item>
+        
+        <item>
+            <title>Meltdown</title>
+            <link>https://whaleblog.github.io/posts/meltdown/</link>
+            <pubDate>Sat, 31 Aug 2024 21:07:01 +0000</pubDate>
+            
+            <guid>https://whaleblog.github.io/posts/meltdown/</guid>
+            <description>Meltdown 是一种利用了 CPU 预测执行的攻击手段。如它的名字一样，它”溶解“了用户空间与内核空间的隔离性。详细内容可以访问 https://meltdownattack.com 查看
+在这个网站里面还记录了另一个漏洞 Spectre。Intel 的芯片被指出均存在 Meltdown 漏洞, 而 Spectre 漏洞则是危害着所有架构的芯片, 无一幸免。这两个可谓目前为止体系结构历史上影响最大的漏洞了
+在有关这个漏洞发布时（2018），大部分操作系统都会将内核内存完整映射到用户空间程序，因为这使得当发生系统调用时，你不用切换 Page Table，也不必清空各种缓存。所以所有的内核 PTE 都会出现在用户程序的 Page Table 中，但是因为这些 PTE 的 PTE_U 比特位没有被设置，用户代码并不能实际的使用内核内存地址
+但是 Meltdown 找到了一种方法，可以在没有权限的情况下读取特定地址的比特位。接下来会讲攻击者利用的两个技巧，一个是预测执行，一个是 CPU 缓存
+学生提问：所以为了能够攻击，需要先知道内核的虚拟内存地址？
+Robert 教授：是的。或许找到内存地址本身就很难，但是你需要假设攻击者有无限的时间和耐心，如果他们在找某个数据，他们或许愿意花费几个月的时间来窃取这个数据。有可能这是某人用来登录银行账号或者邮件用的密码。这意味着攻击者可能需要尝试每一个内核内存地址，以查找任何有价值的数据。
+在这个攻守双方的游戏中，我们需要假设攻击者最后可以胜出并拿到内核的虚拟内存地址。所以我们会假设攻击者要么已经知道了一个内核虚拟地址，要么愿意尝试每一个内核虚拟内存地址。
+Speculative execution 预测执行是一种用来提升 CPU 性能的技术。假设我们运行如下代码：
+r0 = &amp;lt;something&amp;gt; r1 = valid if (r1 == 1) { r2 = *r0 r3 = r2 + 1 } else { r3 = 0 } /* r0, r1, r2, r3 are registers, valid is in RAM */ 任何一个需要从内存中读取数据的 load 指令都会花费 2GHZ CPU 的数百个 CPU cycle，在 r1 获取 valid 值时亦是如此</description>
+            <content type="html"><![CDATA[<p>Meltdown 是一种利用了 CPU 预测执行的攻击手段。如它的名字一样，它”溶解“了用户空间与内核空间的隔离性。详细内容可以访问 <a href="https://meltdownattack.com">https://meltdownattack.com</a> 查看</p>
+<p>在这个网站里面还记录了另一个漏洞 Spectre。Intel 的芯片被指出均存在 Meltdown 漏洞, 而 Spectre 漏洞则是危害着所有架构的芯片, 无一幸免。这两个可谓目前为止体系结构历史上影响最大的漏洞了</p>
+<p>在有关这个漏洞发布时（2018），大部分操作系统都会将内核内存完整映射到用户空间程序，因为这使得当发生系统调用时，你不用切换 Page Table，也不必清空各种缓存。所以所有的内核 PTE 都会出现在用户程序的 Page Table 中，但是因为这些 PTE 的 PTE_U 比特位没有被设置，用户代码并不能实际的使用内核内存地址</p>
+<p>但是 Meltdown 找到了一种方法，可以在没有权限的情况下读取特定地址的比特位。接下来会讲攻击者利用的两个技巧，一个是预测执行，一个是 CPU 缓存</p>
+<blockquote>
+<p>学生提问：所以为了能够攻击，需要先知道内核的虚拟内存地址？</p>
+<p>Robert 教授：是的。或许找到内存地址本身就很难，但是你需要假设攻击者有无限的时间和耐心，如果他们在找某个数据，他们或许愿意花费几个月的时间来窃取这个数据。有可能这是某人用来登录银行账号或者邮件用的密码。这意味着攻击者可能需要尝试每一个内核内存地址，以查找任何有价值的数据。</p>
+<p>在这个攻守双方的游戏中，我们需要假设攻击者最后可以胜出并拿到内核的虚拟内存地址。所以我们会假设攻击者要么已经知道了一个内核虚拟地址，要么愿意尝试每一个内核虚拟内存地址。</p>
+</blockquote>
+<h2 id="speculative-execution">Speculative execution</h2>
+<p>预测执行是一种用来提升 CPU 性能的技术。假设我们运行如下代码：</p>
+<pre><code>r0 = &lt;something&gt;
+r1 = valid
+if (r1 == 1) {
+  r2 = *r0
+  r3 = r2 + 1
+} else {
+  r3 = 0
+}
+/* r0, r1, r2, r3 are registers, valid is in RAM */
+</code></pre>
+<p>任何一个需要从内存中读取数据的 load 指令都会花费 2GHZ CPU 的数百个 CPU cycle，在 r1 获取 valid 值时亦是如此</p>
+<p>现在的 CPU 都使用了叫做 branch prediction 的功能</p>
+<p>CPU 在知道第 3 行代码是否为 true 之前，它会选择某一个 branch 并开始执行。或许 branch 选错了，但是 CPU 现在还不知道</p>
+<p>或许在第 2 行的 load 结束前，也就是在知道valid变量的值之前，CPU会开始执行第 4 行的指令</p>
+<p>为了能回滚误判的预测执行，CPU 需要将寄存器值保存在别处。虽然代码中第 4 行，第5行将值保存在了 r2，r3，但是实际上是保存在了临时寄存器中。如果 CPU 赌对了，那么这些临时寄存器就成了真实寄存器，如果赌错了，CPU 会抛弃临时寄存器，这样代码第 4，5 行就像从来没有发生过一样</p>
+<p>对于我们来说，更有趣的一个问题是，<strong>如果r0中的指针不是一个有效的指针，会发生什么</strong>？如果 r0 中的指针不是一个有效的地址，并且我们在超前执行代码第4行，<strong>机器不会产生 Fault</strong>。因为它不能确定代码第 4 行是否是一个正确的代码分支，因为有可能 CPU 赌错了。所以<strong>直到 CPU 知道了 valid 变量的内容，否则 CPU 不能在代码第 4 行生成 Page Fault</strong>。也就是说，如果 CPU 发现代码第 4 行中 r0 内的地址是无效的，且 valid 变量为 1，这时机器才会生成 Page Fault。所以是否要产生 Page Fault 的决定，可能会推迟数百个 CPU cycle，直到 valid 变量的值被确定</p>
+<p>当我们确定一条指令是否正确的超前执行了而不是被抛弃了这个时间点，对应的技术术语是 Retired。一条指令 Retired 需要满足两个条件：首先它自己要结束执行，其次，所有之前的指令也需要 Retired</p>
+<p>如果 r0 中的内存地址是无效的，且在 Page Table 中完全没有映射关系，那么我也不知道会发生什么。如果 r0 中的内存地址在 Page Table 中存在映射关系，只是现在权限不够，那么 <strong>Intel 的 CPU 会加载内存地址对应的数据，并存储在 r2 寄存器的临时版本中</strong></p>
+<blockquote>
+<p>学生提问：我对CPU的第二个预测，也就是从r0中保存的内存地址加载数据有一些困惑，这是不是意味着r0对应的数据先被加载到了r2，然后再检查PTE的标志位？</p>
+<p>Robert 教授：完全正确。在预测的阶段，不论r0指向了什么地址，只要它指向了任何东西，内存中的数据会被加载到r2中。之后，当load指令Retired时才会检查权限。如果我们并没有权限做操作，所有的后续指令的效果会被取消，也就是对于寄存器的所有修改会回滚。同时，Page Fault会被触发，同时寄存器的状态就像是预测执行的指令没有执行过一样</p>
+<p>学生提问：难道不能限制CPU在Speculative execution的时候，先检查权限，再执行load指令吗</p>
+<p>Robert教授：Intel芯片并不是这样工作的。Meltdown Attack 并不会在 AMD CPU 上生效。普遍接受的观点是，AMD CPU 在 Speculative execution 时，如果没有权限读取内存地址，是不会将内存地址中的数据读出</p>
+<p>学生提问：我们应该为预测执行指令检查权限标志位吗？Intel的回答是不，为什么要检查呢？</p>
+<p>Robert 教授：如果更早的做权限检查，会在CPU核和L1 cache之间增加几个数字电路门，而CPU核和L1 cache之间路径的性能对于机器来说重要的，如果你能在这节省一些数字电路门的话，这可以使得你的CPU节省几个cycle来从L1 cache获取数据，进而更快的运行程序</p>
+</blockquote>
+<h2 id="cpu-caches">CPU caches</h2>
+<p>当 CPU 需要执行 load/store 指令时，CPU 会与内存系统通信。内存系统一些 cache 其中包含了数据的缓存。首先是 L1 data cache，它或许有 64KB，虽然不太大，但是它特别的快。L1 cache 的缓存由虚拟地址索引，如果 L1 中没有找到，我们就需要物理内存地址，这里需要 TLB。我们假设 TLB 中包含了虚拟内存地址对应的物理内存 Page 地址，我们就可以获取到所需要的物理内存地址。通常来说会有一个更大的 cache（L2 cache），它是由物理内存地址索引。如果 L2 中也没有，就要跑到内存中找，这会花费很长的时间。当我们最终获得了数据时，我们可以将从 RAM 读取到的数据加入到 L1 和 L2 cache 中，最终将数据返回给 CPU</p>
+<p>L1 命中的话可能只要几个 CPU cycle，L2 命中的话，可能要几十个 CPU cycle，如果都没有命中最后需要从内存中读取那么会需要几百个 CPU cycle</p>
+<h2 id="flush-and-reload">Flush and Reload</h2>
+<p>Meltdown 的实现还需要一种技术，我们需要知道一段代码是否动过一个特定的内存，Flush and Reload 就可以做到这一点。简单来说就是先清空 cache，保证这段特定的内存没有被 cache；然后执行特定的代码；接着读取这段内存，如果速度很快的话，就说明这段内存被重新 cache 了，即刚刚运行的代码动过这段内存</p>
+<p>关于清空 cache，Intel 提供了一条指令，叫做 clflush，它接收一个内存地址作为参数，并确保该内存地址不在任何 cache 中。这直接实现了我们的目的。即使没有这条指令，我们可以 load 64KB 随机数据将原本的 cache 冲走</p>
+<p>对读取速度的测量，我们可以使用 rdtsc。Intel CPU 会提供指令来向你返回 CPU cycle 的数量。执行 rdtsc 指令，它会返回 CPU 启动之后总共经过了多少个 CPU cycle</p>
+<h2 id="meltdown-attack">Meltdown Attack</h2>
+<p>在有以上前置知识之后，可以来看看 Meltdown 了</p>
+<pre><code>char buf[8192]
+
+// Flush. Make sure buf[0] and buf[4096] are not cached
+clflush buf[0]
+clflush buf[4096]
+
+&lt;some expensive inst like div, sqrt&gt;
+
+r1 = &lt;a kernel virtual addr&gt;
+r2 = *r1
+r2 = r2 &amp; 1
+r2 = r2 * 4096
+r3 = buf[r2]
+
+&lt;handle page fault from &quot;r2 = *r1&quot;&gt;
+
+// Reload. Test time
+a = rdstc
+r0 = buf[0]
+b = rdstc
+r1 = buf[4096]
+c = rdstc
+if b - a &lt; c - b
+  low bit is probably a 0
+</code></pre>
+<p>首先我们 clflush 保证 buf[0] 和 buf[4096] 不在 cache 中。之所以差这么大，是为了防止 load 的时候，硬件会从内存中再加载相邻的几个数据到 cache 中，我们不希望在加载 buf[a] 时把 buf[b] 也带上了</p>
+<p>接下来会调用一些非常耗时的指令。这些耗时的指令同样会被预测执行，即在结果出来之前，会提前执行后面的内容。这样，在 <code>r2 = *r1</code> 实际产生 Page Fault 前，还要等待这些耗时指令 Retired。这样可以争取时间，我们需要保证在 load buf[r2] 被预测执行</p>
+<p><code>r3 = buf[r2]</code> 虽然不会对寄存器产生直接影响，但是这会导致 buf[r2] 被 cache</p>
+<p>Page Fault 最终还是会发生，但是现代的 OS 又给予了用户程序操作内存的接口。我们可以用 sigaction 注册一个 Page Fault Handler，并且在Page Fault 之后重新获得控制</p>
+<p>之后我们重新 load buf[0] 与 buf[4096]，比较二者的 load 时间。若是 buf[0] 的读取时间短，则说明很大可能当时 r3 load 的是 buf[0]，也就是说，那个内核虚拟地址所在的 bit 是 0，反之为 1</p>
+<p>我们通过这种方式读取内核空间的数据</p>
+<p>这种攻击可以用与这些场合：第一种是云计算：如果你使用了云服务商，它会在同一个计算机上运行多个用户的业务，那么你或许就可以窥探其他运行在同一个机器上的用户软件的内存；另一个可能有用的场景是，当你的浏览器在访问 web 时，你的浏览器其实运行了很多不被信任的代码，或许是以插件的形式，或是以 javascript 的形式。这些代码会被加载到浏览器，然后被编译并被运行</p>
+<p>很多操作系统在论文发表之后数周内就推出的一个快速修复，叫做 KAISER，现在在 Linux 中被称为 KPTI 的技术（Kernel page-table isolation）。这里的想法很简单，也就是不将内核内存映射到用户的 Page Table 中。这样一来就会有 Page Table 的切换，并且因为现在的用户页表并没有包含对 r1 存储的内核虚拟地址的翻译，r2 无法读取，Meltdown Attack 也就不能工作了，缺点是系统调用的代价更高了</p>
+<p>除此之外，还有一个合理的硬件修复：CPU 完全可以在获取数据的时候检查权限标志位，如果检查不能通过，CPU 不会返回数据到 CPU 核中</p>
+]]></content>
+        </item>
+        
+        <item>
+            <title>宏内核与微内核</title>
+            <link>https://whaleblog.github.io/posts/%E5%AE%8F%E5%86%85%E6%A0%B8%E4%B8%8E%E5%BE%AE%E5%86%85%E6%A0%B8/</link>
+            <pubDate>Sat, 31 Aug 2024 11:45:36 +0000</pubDate>
+            
+            <guid>https://whaleblog.github.io/posts/%E5%AE%8F%E5%86%85%E6%A0%B8%E4%B8%8E%E5%BE%AE%E5%86%85%E6%A0%B8/</guid>
+            <description>完整内容请见：https://mit-public-courses-cn-translatio.gitbook.io/mit6-s081/lec18-os-organization-robert
+Monolithic Kernel 宏内核优势 monolithic 的意思是指操作系统内核是一个完成了各种事情的大的程序，我们熟知的 Linux 是由这种方式所构建。通常来说 monolithic kernel 集成了文件系统，内存分配，调度器，虚拟内存系统等一系列复杂的组件，以及许多强大的抽象。这样带来的好处是显而易见的：
+这些高度抽象的接口通常是可移植的，可以在各种各样的存储设备上实现文件和目录，而不需要改变代码
+可以向应用程序隐藏复杂性。Linux 提供了地址空间的抽象，而不是让程序直接访问 MMU。另外一个例子是，我们可以直接对 fd 调用 read/write，而不需要直接接触文件系统中各个层级
+帮助管理共享资源，比如内存与磁盘
+因为所有这些功能都在一个程序里面，所以组件之间可以访问彼此的数据结构，进而使得依赖多个组件的工具更容易实现。比如 exec 系统调用，它依赖文件系统，因为它要从磁盘中读取二进制文件并加载到内存中，同时它也依赖内存分配和虚拟内存系统，因为它需要设置好新的进程的地址空间。但是在内核态我们可以没有隔离地访问 inode，proc，pgtbl 等结构体，所以 exec 的中实现是相对简单的
+内核的所有代码都以完整的硬件权限（内核都在 Supervisor mode）在运行，这也简化了软件的实现
+宏内核劣势 但是其缺点也很明显，这也是为什么其他内核架构，比如微内核，出现的原因，monolithic kernel 并不适用于所有的场景：
+它们大且复杂。到目前为止，Linux 的代码量来到了千万行。一个组件可以很方便地与另一个组件交互，这确实使得编程更容易了，但同样意味着内部代码有大量的交互和依赖，以至于看明白代码都有挑战。而且大型的程序与复杂的结构也同样伴随着大量的 Bug 与安全漏洞，如果使用宏内核，这些几乎不可避免
+另一个人们不喜欢 monolithic kernel 的原因是，随着时间的推移，它们倾向于发展成拥有所有的功能。Linux 应用在各种场合中，从移动电话到桌面工作站，从笔记本电脑到平板电脑，从服务器到路由器。Linux可以支持这么多设备是极好的，这也使得 Linux 非常的通用。这很好，但是另一方面，通用就意味着慢。对于各种不同的场景都能支持，或许就不能对某些特定场景进行优化。况且很多时候我们根本用不着这么多功能。另外，这也使得完成一些简单的工作需要做很多额外的事情：比如当我们使用 pipe 时，我们需要 buffering，locking，sleep/wakeup，还有 context switching&amp;hellip;&amp;hellip; 但是对于从一个进程移动一个字节到另一个进程来说，这里有大量的内容或许并不是必须的
+宏内核还可能因为太大反而削弱了抽象能力。你可以 wait 你自己 fork 的子进程，但不可以等待其他的；你可以 mmap 自己的地址空间，但是为了隔离性不能修改其他的；你可以在磁盘上建一个 B 树，但是读取磁盘时，文件系统不知道这是一个 B 树，这反而不利于效率
+还有就是可扩展性，你只能使用内核提供的能力
+Micro Kernel 微内核是指一种通用的方法或者概念，并不特指任何特定的产品
+微内核的核心就是实现了 IPC（Inter-Process Communication）以及线程和任务的 tiny kernel。所以微内核只提供了进程抽象和通过IPC进程间通信的方式，除此之外别无他物。任何你想要做的事情，例如文件系统，你都会通过一个用户空间进程来实现，完全不会在内核中实现</description>
+            <content type="html"><![CDATA[<p>完整内容请见：<a href="https://mit-public-courses-cn-translatio.gitbook.io/mit6-s081/lec18-os-organization-robert">https://mit-public-courses-cn-translatio.gitbook.io/mit6-s081/lec18-os-organization-robert</a></p>
+<h2 id="monolithic-kernel">Monolithic Kernel</h2>
+<h3 id="宏内核优势">宏内核优势</h3>
+<p>monolithic 的意思是指操作系统内核是一个完成了各种事情的大的程序，我们熟知的 Linux 是由这种方式所构建。通常来说 monolithic kernel 集成了文件系统，内存分配，调度器，虚拟内存系统等一系列复杂的组件，以及许多强大的抽象。这样带来的好处是显而易见的：</p>
+<ol>
+<li>
+<p>这些高度抽象的接口通常是可移植的，可以在各种各样的存储设备上实现文件和目录，而不需要改变代码</p>
+</li>
+<li>
+<p>可以向应用程序隐藏复杂性。Linux 提供了地址空间的抽象，而不是让程序直接访问 MMU。另外一个例子是，我们可以直接对 fd 调用 read/write，而不需要直接接触文件系统中各个层级</p>
+</li>
+<li>
+<p>帮助管理共享资源，比如内存与磁盘</p>
+</li>
+<li>
+<p>因为所有这些功能都在一个程序里面，所以组件之间可以访问彼此的数据结构，进而使得依赖多个组件的工具更容易实现。比如 exec 系统调用，它依赖文件系统，因为它要从磁盘中读取二进制文件并加载到内存中，同时它也依赖内存分配和虚拟内存系统，因为它需要设置好新的进程的地址空间。但是在内核态我们可以没有隔离地访问 inode，proc，pgtbl 等结构体，所以 exec 的中实现是相对简单的</p>
+</li>
+<li>
+<p>内核的所有代码都以完整的硬件权限（内核都在 Supervisor mode）在运行，这也简化了软件的实现</p>
+</li>
+</ol>
+<h3 id="宏内核劣势">宏内核劣势</h3>
+<p>但是其缺点也很明显，这也是为什么其他内核架构，比如微内核，出现的原因，monolithic kernel 并不适用于所有的场景：</p>
+<ol>
+<li>
+<p>它们大且复杂。到目前为止，Linux 的代码量来到了千万行。一个组件可以很方便地与另一个组件交互，这确实使得编程更容易了，但同样意味着内部代码有大量的交互和依赖，以至于看明白代码都有挑战。而且大型的程序与复杂的结构也同样伴随着大量的 Bug 与安全漏洞，如果使用宏内核，这些几乎不可避免</p>
+</li>
+<li>
+<p>另一个人们不喜欢 monolithic kernel 的原因是，随着时间的推移，它们倾向于发展成拥有所有的功能。Linux 应用在各种场合中，从移动电话到桌面工作站，从笔记本电脑到平板电脑，从服务器到路由器。Linux可以支持这么多设备是极好的，这也使得 Linux 非常的通用。这很好，但是另一方面，通用就意味着慢。对于各种不同的场景都能支持，或许就不能对某些特定场景进行优化。况且很多时候我们根本用不着这么多功能。另外，这也使得完成一些简单的工作需要做很多额外的事情：比如当我们使用 pipe 时，我们需要 buffering，locking，sleep/wakeup，还有 context switching&hellip;&hellip; 但是对于从一个进程移动一个字节到另一个进程来说，这里有大量的内容或许并不是必须的</p>
+</li>
+<li>
+<p>宏内核还可能因为太大反而削弱了抽象能力。你可以 wait 你自己 fork 的子进程，但不可以等待其他的；你可以 mmap 自己的地址空间，但是为了隔离性不能修改其他的；你可以在磁盘上建一个 B 树，但是读取磁盘时，文件系统不知道这是一个 B 树，这反而不利于效率</p>
+</li>
+<li>
+<p>还有就是可扩展性，你只能使用内核提供的能力</p>
+</li>
+</ol>
+<h2 id="micro-kernel">Micro Kernel</h2>
+<p>微内核是指一种通用的方法或者概念，并不特指任何特定的产品</p>
+<p>微内核的核心就是实现了 IPC（Inter-Process Communication）以及线程和任务的 tiny kernel。所以微内核只提供了进程抽象和通过IPC进程间通信的方式，除此之外别无他物。任何你想要做的事情，例如文件系统，你都会通过一个用户空间进程来实现，完全不会在内核中实现</p>
+<p>在这种实现中，假如一个文本编辑器需要读取一个文件，它通过 IPC 会发送一条消息到文件系统进程。文件系统进程需要与磁盘交互，所以它会发送另一个 IPC 到磁盘驱动程序。之后磁盘驱动会返回一个磁盘块给文件系统。之后文件系统再将VI请求的数据通过 IPC 返回给文本编辑器</p>
+<p>可以看到，在内核中唯一需要做的是支持进程/任务/线程，以及支持 IPC 来作为消息的传递途径，除此之外，内核不用做任何事情。内核中没有任何文件系统，没有任何设备驱动，没有网络协议栈，所有这些东西以普通用户进程在运行</p>
+<h3 id="研究微内核的动机">研究微内核的动机</h3>
+<p>其实这里面还有审美因素：有人觉得像 Linux 内核这样大的复杂的程序并不十分优雅。我们可以构建一些小得多且专注得多的设计，而不是这样一个巨大的拥有各种随机特性的集合体</p>
+<p>但其实微内核有更多具体的优势：</p>
+<ol>
+<li>
+<p>更小的内核或许会更加的安全</p>
+</li>
+<li>
+<p>在特殊场景下，你需要证明一个操作系统是正确且安全的。而一个几百万行的内核不太可能保证。内核通常都很小，这是它能够被证明是安全的一个关键因素</p>
+</li>
+<li>
+<p>少量代码的程序比巨大的程序更容易被优化</p>
+</li>
+<li>
+<p>小内核可能会运行的更快，你不用为很多用不上的功能付出代价</p>
+</li>
+<li>
+<p>小内核在设计上或许有更少的限制，应用程序的编写可以更加灵活</p>
+</li>
+</ol>
+<p>除了由小带来的有点，它的设计也使得其有独特的特性：</p>
+<ol>
+<li>
+<p>有很多我们习惯了位于内核的功能和函数，现在都运行在用户空间的不同部分，可以使得代码更模块化</p>
+</li>
+<li>
+<p>运行在用户空间的代码更容易被修改，所以更容易被定制化</p>
+</li>
+<li>
+<p>此外，这种设计还可以使 OS 更加健壮。如果内核出错，通常需要 panic 并重启。但是故障部分被转移到了用户空间，我们可以只是重新启动这一个服务，而不影响其他功能。这对于驱动来说尤其明显，内核中大部分 Bug 都在硬件驱动中，如果我们能将设备驱动从内核中移出的话，那么内核中可能会有少的多的 Bug 和 Crash</p>
+</li>
+<li>
+<p>可以在微内核上模拟或者运行多个操作系统。我们可以把一个完整的 Linux 内核当作一个·任务运行在微内核上</p>
+</li>
+</ol>
+<h3 id="微内核的挑战">微内核的挑战</h3>
+<ol>
+<li>
+<p>第一个挑战是，我们希望微内核的系统调用接口尽可能的简单，但是什么才是有用的系统调用的最小集？我们需要考虑如何设计这些底层的系统调用，在简单的同时，需要能够足够强大以支持人们需要做的各种事情</p>
+</li>
+<li>
+<p>我们仍然需要开发一些用户空间服务来实现操作系统的其他部分。比如我们的系统调用需要支持 exec，但是内核没有文件的抽象</p>
+</li>
+<li>
+<p>微内核的设计需要进程间通过 IPC 有大量的通信，这要求 IPC 非常快，否则很影响性能</p>
+</li>
+</ol>
+<h2 id="l4">L4</h2>
+<p>L4 是最早的一批可工作的微内核</p>
+<h3 id="l4-简介">L4 简介</h3>
+<p>L4 是微内核，它只有7个系统调用</p>
+<p>L4 并不大，论文发表的时候，它只有 13000 行代码</p>
+<p>Task，线程，地址空间，IPC 是 L4 唯四有的抽象</p>
+<p>L4里面不包含其他的功能，没有文件系统，没有fork/exec系统调用，除了这里非常简单的IPC之外，没有其他例如pipe的通信机制，没有设备驱动，没有网络的支持等等。任何其他你想要的功能，你需要以用户空间进程的方式提供</p>
+<p>L4能提供的一件事情是完成线程间切换。L4会完成线程调度和context switch，来让多个线程共用一个CPU。它的实现方式其实和我们熟知的线程切换方式非常类似</p>
+<h2 id="improving-ipc">Improving IPC</h2>
+<p>如果是像 pipe 的实现，P1 与 P2 通信完成一次消息的发送与接收。P1 会调用 send，陷入内核，向 buffer 中写消息。在 send 返回后，又调用 recv 来获取回复，期间会 sleep 等待，可能会在计时器到来时 context switching。过一会 P2 有空，调用 recv 接受消息，处理完后调用 send 追加到 buffer。等到调度器使 P1 回复运行，看到 buffer 中有消息，recv 才返回&hellip;&hellip;</p>
+<p>在这个设计中，为了让消息能够发送和回复，期间有多次的用户态与内核态切换，4 次系统调用，若是单核，还得至少有一次 context switching 在 P1 与 P2 中切换。每一次用户空间和内核空间之间的切换和 context switching 都很费时，因为每次切换，都需要切换 Page Table，进而清空 TLB。而且不仅如此还牵涉到消息的拷贝、缓存的分配等等。可见这种异步的设计是非常慢的</p>
+<p>但是我们只是期望发送一个消息然后得到一个回复，我们完全可以有更简单的设计</p>
+<h3 id="synchronized">Synchronized</h3>
+<p>比如我们的 send 和 recv 是一体的：send 会等待消息被接收，并且 recv 会等待回复消息被发送。如果我是进程 P1，我想要发送消息，我会调用 send，send 不会写完 buffer 就走人，而是等待 P2 的 recv。当 P2 调用 recv，二者都在内核中，此时内核可以直接将消息从用户空间 P1 拷贝到用户空间 P2，而不用先拷贝到内核中，再从内核中拷出来</p>
+<h3 id="avoid-copying">Avoid Copying</h3>
+<p>如果消息超级小，比如说只有几十个字节，它可以在寄存器中传递，而不需要拷贝。如果P1要发送的消息很短，它可以将消息存放到特定的寄存器中。当内核返回到P2进程的用户空间时，会恢复保存了的寄存器，这意味着当内核从recv系统调用返回时，特定寄存器的内容就是消息的内容，因此完全不需要从内存拷贝到内存</p>
+<p>对于非常长的消息，可以在一个 IPC 消息中携带一个 Page 映射。你可以发送一个物理内存 Page，这个 Page 会被再次映射到目标 Task 地址空间，这里也没有拷贝。这里提供的是共享 Page 的权限</p>
+]]></content>
+        </item>
+        
+        <item>
+            <title>xv6 实验日志 - Sleep &amp; Wakeup</title>
+            <link>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;sleep&#43;&#43;wakeup/</link>
+            <pubDate>Thu, 22 Aug 2024 11:19:42 +0000</pubDate>
+            
+            <guid>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;sleep&#43;&#43;wakeup/</guid>
+            <description>xv6 在进程切换之时还有一些限制：不允许进程在执行switch函数的过程中，持有任何其他的锁。即进程在调用switch函数的过程中，必须要持有 p-&amp;gt;lock，但是同时又不能持有任何其他的锁
+假设我们在一个只有一个CPU核的机器上，进程 P1 调用了 swtch 函数将 CPU 控制转给了调度器线程，调度器线程发现还有一个进程 P2 的内核线程正在等待被运行，所以调度器线程会切换到运行进程 P2。假设 P2 也想使用磁盘，UART 或者 console，它会对 P1 持有的锁调用 acquire，这是对于同一个锁的第二个 acquire 调用。这形成了死锁
+后面讨论 Sleep &amp;amp; Wakeup 如何工作时会再次使用它们
+Sleep &amp;amp; Wakeup 当我们写一个线程的代码时，有些场景需要等待一些特定的事件，比如读取 pipe 等待非空，磁盘写入一类，可能来自于 I/O，也可能来自于另一个进程
+我们怎么能让进程或者线程等待一些特定的事件呢？一种非常直观的方法是通过循环实现 busy-wait。假设我们想从一个 pipe 读取数据，我们就写一个循环一直等待 pipe 的 buffer 不为空
+如果你知道你要等待的事件极有可能在 0.1 微秒内发生，通过一个类似的循环等待或许是最正确的方式。通常来说在操作设备硬件的代码中会采用这样的等待方式
+如果事件可能需要数个毫秒（要知道现代 PC 每秒运行数亿次指令）甚至你都不知道事件要多久才能发生，那么我们就不想在这一直循环并且浪费本可以用来完成其他任务的 CPU 时间。这时我们想要通过类似 swtch 函数调用的方式出让 CPU，并在我们关心的事件发生时重新获取 CPU。Coordination 就是有关出让 CPU ，直到等待的事件发生再恢复执行的工具。与许多 Unix 风格操作系统一样，xv6 使用 Sleep &amp;amp; Wakeup 的方式
+// Atomically release lock and sleep on chan.</description>
+            <content type="html"><![CDATA[<p>xv6 在进程切换之时还有一些限制：不允许进程在执行switch函数的过程中，持有任何其他的锁。即进程在调用switch函数的过程中，必须要持有 p-&gt;lock，但是同时又不能持有任何其他的锁</p>
+<p>假设我们在一个只有一个CPU核的机器上，进程 P1 调用了 swtch 函数将 CPU 控制转给了调度器线程，调度器线程发现还有一个进程 P2 的内核线程正在等待被运行，所以调度器线程会切换到运行进程 P2。假设 P2 也想使用磁盘，UART 或者 console，它会对 P1 持有的锁调用 acquire，这是对于同一个锁的第二个 acquire 调用。这形成了死锁</p>
+<p>后面讨论 Sleep &amp; Wakeup 如何工作时会再次使用它们</p>
+<h2 id="sleep--wakeup">Sleep &amp; Wakeup</h2>
+<p>当我们写一个线程的代码时，有些场景需要等待一些特定的事件，比如读取 pipe 等待非空，磁盘写入一类，可能来自于 I/O，也可能来自于另一个进程</p>
+<p>我们怎么能让进程或者线程等待一些特定的事件呢？一种非常直观的方法是通过循环实现 busy-wait。假设我们想从一个 pipe 读取数据，我们就写一个循环一直等待 pipe 的 buffer 不为空</p>
+<p>如果你知道你要等待的事件极有可能在 0.1 微秒内发生，通过一个类似的循环等待或许是最正确的方式。通常来说在操作设备硬件的代码中会采用这样的等待方式</p>
+<p>如果事件可能需要数个毫秒（要知道现代 PC 每秒运行数亿次指令）甚至你都不知道事件要多久才能发生，那么我们就不想在这一直循环并且浪费本可以用来完成其他任务的 CPU 时间。这时我们想要通过类似 swtch 函数调用的方式出让 CPU，并在我们关心的事件发生时重新获取 CPU。Coordination 就是有关出让 CPU ，直到等待的事件发生再恢复执行的工具。与许多 Unix 风格操作系统一样，xv6 使用 Sleep &amp; Wakeup 的方式</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">// Atomically release lock and sleep on chan.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// Reacquires lock when awakened.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">void</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">sleep</span>(<span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>chan, <span style="color:#66d9ef">struct</span> spinlock <span style="color:#f92672">*</span>lk)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>p <span style="color:#f92672">=</span> <span style="color:#a6e22e">myproc</span>();
+</span></span><span style="display:flex;"><span>      
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Must acquire p-&gt;lock in order to
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// change p-&gt;state and then call sched.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// Once we hold p-&gt;lock, we can be
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// guaranteed that we won&#39;t miss any wakeup
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// (wakeup locks p-&gt;lock),
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// so it&#39;s okay to release lk.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);  <span style="color:#75715e">//DOC: sleeplock1
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">release</span>(lk);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Go to sleep.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    p<span style="color:#f92672">-&gt;</span>chan <span style="color:#f92672">=</span> chan;
+</span></span><span style="display:flex;"><span>    p<span style="color:#f92672">-&gt;</span>state <span style="color:#f92672">=</span> SLEEPING;
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">sched</span>();
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Tidy up.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    p<span style="color:#f92672">-&gt;</span>chan <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Reacquire original lock.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">acquire</span>(lk);
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Wake up all processes sleeping on chan.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// Must be called without any p-&gt;lock.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">void</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">wakeup</span>(<span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>chan)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>p;
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span>(p <span style="color:#f92672">=</span> proc; p <span style="color:#f92672">&lt;</span> <span style="color:#f92672">&amp;</span>proc[NPROC]; p<span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span>(p <span style="color:#f92672">!=</span> <span style="color:#a6e22e">myproc</span>()){
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span>(p<span style="color:#f92672">-&gt;</span>state <span style="color:#f92672">==</span> SLEEPING <span style="color:#f92672">&amp;&amp;</span> p<span style="color:#f92672">-&gt;</span>chan <span style="color:#f92672">==</span> chan) {
+</span></span><span style="display:flex;"><span>                p<span style="color:#f92672">-&gt;</span>state <span style="color:#f92672">=</span> RUNNABLE;
+</span></span><span style="display:flex;"><span>            }
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>sleep 在获取，释放锁之后，设置 channel 与 state 就切换到另外的线程</p>
+<p>wakeup 则根据 channel 将 SLEEPING 的进程状态改为 RUNABLE</p>
+<p>当我们调用 sleep 函数时，我们传入一个 sleep channel 表明我们等待的特定事件，当然，并不关心这个数值代表什么，当调用 wakeup 时我们希望能传入与调用 sleep 函数相同的 sleep channel 来表明想唤醒哪个线程</p>
+<p>Sleep &amp; wakeup 的一个优点是它们可以很灵活，它们不关心代码正在执行什么操作，你不用告诉 sleep 函数你在等待什么事件，你也不用告诉 wakeup 函数发生了什么事件，你只需要匹配好 64bit 的 sleep channel 就行</p>
+<p>不过，对于sleep函数，我们需要将一个锁作为第二个参数传入，这是一个稍微丑陋的实现。总的来说，不太可能设计一个通用的 sleep 函数并完全忽略需要等待的事件</p>
+<h2 id="lost-wakeup">Lost Wakeup</h2>
+<p>sleep 若只传入 sleep channel 可能会触发 lost wakeup，即 wakeup 在 proc 的状态变为 sleep 之前便已调用</p>
+<p>我们以 uart 设备的 uartwrite 与 uartintr 为例：这里牵涉到两个锁：进程的锁与 uart 设备的锁</p>
+<p>假如 sleep 没有接受 uart 锁的传参，就称这种 sleep 叫 broken_sleep 吧</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#66d9ef">void</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">uartwrite</span>(<span style="color:#66d9ef">char</span> buf[],<span style="color:#66d9ef">int</span> n)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>uart_tx_lock);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span>(i <span style="color:#f92672">&lt;</span> n){
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">while</span>(tx_done <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>){
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e">//UART is busy sending a character.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>            <span style="color:#75715e">//wait for it to interrupt.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>            <span style="color:#75715e">//sleep(&amp;tx_chan,&amp;uart_tx_lock);
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>            <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>uart_tx_lock);
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">broken_sleep</span>(<span style="color:#f92672">&amp;</span>tx_chan);
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>uart_tx_lock);
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">WriteReg</span>(THR, buf[i]);
+</span></span><span style="display:flex;"><span>        i <span style="color:#f92672">+=</span><span style="color:#ae81ff">1</span> ;
+</span></span><span style="display:flex;"><span>        tx_done <span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>      
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>uart_tx_lock);
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">uartintr</span>(<span style="color:#66d9ef">void</span>)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>uart_tx_lock);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span>(<span style="color:#a6e22e">ReadReg</span>(LSR) <span style="color:#f92672">&amp;</span> LSR_TX_IDLE){
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">//UART finished transmitting;wake up any sending thread.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        tx_done <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">wakeup</span>(<span style="color:#f92672">&amp;</span>tx_chan);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>uart_tx_lock);
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>可以看到 uartwrite 的 broken_sleep 上下，先释放了 uart_tx_lock，sleep 结束后又将其锁上</p>
+<p>假如说没有这两把锁是不行的，uartwrite 函数一开始就请求了 uart 设备的锁（毕竟 tx_done 和 uart 本身是共享的，必须要加锁），而在其 while 循环内，只有当 tx_done != 0 时才能退出循环，但是只有在 uartintr 里面才可能将这个值设为非 0，但是这个中断处理函数最开始就会请求 uart 的锁，但这是锁被 uartwrite 持有，deadly embrace</p>
+<p>上面加锁方式的问题是，uartwrite 在期望中断处理程序执行的同时又持有了锁。而我们唯一期望中断处理程序执行的位置就是 sleep 执行期间，其他的时候 uartwrite 持有锁是没有问题的。所以我们在 sleep 之前释放了锁，待其放回再锁上</p>
+<p>好的，假如我们有一个核正运行到 uartwrite 的 sleep 前面，此时另一个 CPU 核正在执行 uartintr 的 acquire。在锁释放的一瞬间，后者得到了锁，发现 UART 硬件完成了发送上一个字符，之后会设置 tx_done 为 1，最后再调用 wakeup 函数。但假如在 wakeup 的时候 sleep 还没调用，uartwrite 的线程并没又进入 SLEEPING 呢？那么 wakeup 并没有唤醒任何进程，而这次的 sleep 没有人会唤醒它。这就出现了 Lost Wakeup 问题</p>
+<blockquote>
+<p>学生提问：当从sleep函数中唤醒时，不是已经知道是来自UART的中断处理程序调用wakeup的结果吗？这样的话tx_done有些多余。</p>
+<p>Robert教授：我想你的问题也可以描述为：为什么需要通过一个循环while(tx_done == 0)来调用sleep函数？这个问题的答案适用于一个更通用的场景：实际中不太可能将sleep和wakeup精确匹配。并不是说sleep函数返回了，你等待的事件就一定会发生。举个例子，假设我们有两个进程同时想写UART，它们都在uartwrite函数中。可能发生这种场景，当一个进程写完一个字符之后，会进入SLEEPING状态并释放锁，而另一个进程可以在这时进入到循环并等待UART空闲下来。之后两个进程都进入到SLEEPING状态，当发生中断时UART可以再次接收一个字符，两个进程都会被唤醒，但是只有一个进程应该写入字符，所以我们才需要在sleep外面包一层while循环。实际上，你可以在XV6中的每一个sleep函数调用都被一个while循环包着。因为事实是，你或许被唤醒了，但是其他人将你等待的事件拿走了，所以你还得继续sleep。这种现象还挺普遍的。</p>
+</blockquote>
+<p>在最初给的 sleep 与 wakeup 的源代码便解决了这个问题，这是由下面这些规则确保的：</p>
+<ul>
+<li>
+<p>调用sleep时需要持有 condition lock，这样 sleep 函数才能知道相应的锁</p>
+</li>
+<li>
+<p>sleep 函数只有在获取到进程的锁 p-&gt;lock 之后，才能释放 condition lock</p>
+</li>
+<li>
+<p>wakeup 需要同时持有两个锁才能查看进程</p>
+</li>
+</ul>
+<h2 id="exit">Exit</h2>
+<p>在 xv6 中，一个进程如果退出的话，我们需要释放用户内存，释放 page table，释放 rapframe 对象，将进程在进程表单中标为 REUSABLE</p>
+<p>这里会产生的两大问题：</p>
+<ul>
+<li>
+<p>首先我们不能直接单方面的摧毁另一个线程。另一个线程可能正在另一个CPU核上运行，并使用着自己的栈；也可能另一个线程正在内核中持有了锁；也可能另一个线程正在更新一个复杂的内核数据</p>
+</li>
+<li>
+<p>另一个问题是，即使一个线程调用了exit系统调用，并且是自己决定要退出，它仍然还是要运行一小段代码。但只要它还在执行代码，它就不能释放正在使用的资源</p>
+</li>
+</ul>
+<p>xv6 有两个函数与关闭线程进程相关。第一个是 exit，第二个是 kill。让我们先来看位于 proc.c 中的 exit 函数</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">// Exit the current process.  Does not return.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// An exited process remains in the zombie state
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// until its parent calls wait().
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">void</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">exit</span>(<span style="color:#66d9ef">int</span> status)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>p <span style="color:#f92672">=</span> <span style="color:#a6e22e">myproc</span>();
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span>(p <span style="color:#f92672">==</span> initproc)
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">panic</span>(<span style="color:#e6db74">&#34;init exiting&#34;</span>);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Close all open files.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">for</span>(<span style="color:#66d9ef">int</span> fd <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; fd <span style="color:#f92672">&lt;</span> NOFILE; fd<span style="color:#f92672">++</span>){
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span>(p<span style="color:#f92672">-&gt;</span>ofile[fd]){
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">struct</span> file <span style="color:#f92672">*</span>f <span style="color:#f92672">=</span> p<span style="color:#f92672">-&gt;</span>ofile[fd];
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">fileclose</span>(f);
+</span></span><span style="display:flex;"><span>            p<span style="color:#f92672">-&gt;</span>ofile[fd] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">begin_op</span>();
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">iput</span>(p<span style="color:#f92672">-&gt;</span>cwd);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">end_op</span>();
+</span></span><span style="display:flex;"><span>    p<span style="color:#f92672">-&gt;</span>cwd <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>wait_lock);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Give any children to init.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">reparent</span>(p);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Parent might be sleeping in wait().
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">wakeup</span>(p<span style="color:#f92672">-&gt;</span>parent);
+</span></span><span style="display:flex;"><span>      
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    p<span style="color:#f92672">-&gt;</span>xstate <span style="color:#f92672">=</span> status;
+</span></span><span style="display:flex;"><span>    p<span style="color:#f92672">-&gt;</span>state <span style="color:#f92672">=</span> ZOMBIE;
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>wait_lock);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Jump into the scheduler, never to return.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">sched</span>();
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">panic</span>(<span style="color:#e6db74">&#34;zombie exit&#34;</span>);
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>首先 exit 关闭了所有已打开的文件，将当前目录的引用释放给文件系统，接下来需要设置子进程的父进程为 init 进程，之后通过调用 wakeup 函数唤醒当前进程的父进程，然后设置进程状态为 ZOMBIE。现在进程还没有完全释放它的资源，还不能被重用，并且进程不会再运行。最后 sched 调度其他的进程</p>
+<h2 id="wait">Wait</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">// Wait for a child process to exit and return its pid.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// Return -1 if this process has no children.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">int</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">wait</span>(uint64 addr)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>np;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> havekids, pid;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>p <span style="color:#f92672">=</span> <span style="color:#a6e22e">myproc</span>();
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>wait_lock);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span>(;;){
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// Scan through table looking for exited children.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        havekids <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span>(np <span style="color:#f92672">=</span> proc; np <span style="color:#f92672">&lt;</span> <span style="color:#f92672">&amp;</span>proc[NPROC]; np<span style="color:#f92672">++</span>){
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span>(np<span style="color:#f92672">-&gt;</span>parent <span style="color:#f92672">==</span> p){
+</span></span><span style="display:flex;"><span>                <span style="color:#75715e">// make sure the child isn&#39;t still in exit() or swtch().
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>                <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>np<span style="color:#f92672">-&gt;</span>lock);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>                havekids <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">if</span>(np<span style="color:#f92672">-&gt;</span>state <span style="color:#f92672">==</span> ZOMBIE){
+</span></span><span style="display:flex;"><span>                    <span style="color:#75715e">// Found one.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>                    pid <span style="color:#f92672">=</span> np<span style="color:#f92672">-&gt;</span>pid;
+</span></span><span style="display:flex;"><span>                    <span style="color:#66d9ef">if</span>(addr <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">copyout</span>(p<span style="color:#f92672">-&gt;</span>pagetable, addr, (<span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>)<span style="color:#f92672">&amp;</span>np<span style="color:#f92672">-&gt;</span>xstate,<span style="color:#66d9ef">sizeof</span>(np<span style="color:#f92672">-&gt;</span>xstate)) <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>                    <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>np<span style="color:#f92672">-&gt;</span>lock);
+</span></span><span style="display:flex;"><span>                    <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>wait_lock);
+</span></span><span style="display:flex;"><span>                    <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>                }
+</span></span><span style="display:flex;"><span>                <span style="color:#a6e22e">freeproc</span>(np);
+</span></span><span style="display:flex;"><span>                <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>np<span style="color:#f92672">-&gt;</span>lock);
+</span></span><span style="display:flex;"><span>                <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>wait_lock);
+</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">return</span> pid;
+</span></span><span style="display:flex;"><span>            }
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>np<span style="color:#f92672">-&gt;</span>lock);
+</span></span><span style="display:flex;"><span>      }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// No point waiting if we don&#39;t have any children.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">if</span>(<span style="color:#f92672">!</span>havekids <span style="color:#f92672">||</span> p<span style="color:#f92672">-&gt;</span>killed){
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>wait_lock);
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// Wait for a child to exit.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#a6e22e">sleep</span>(p, <span style="color:#f92672">&amp;</span>wait_lock);  <span style="color:#75715e">//DOC: wait-sleep
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>可以看到，wait 会循环扫描进程表单，去查找自己 ZOMBIE 的子进程。找到后，它会调用 freeproc 去释放子进程例如 trapframe，pagetable 等资源，并将 state 置为 UNUSED</p>
+<p>wait 实际上也是进程退出的一个重要组成部分。在 Unix 中，对于每一个退出的进程，都需要有一个对应的 wait 系统调用，这就是为什么当一个进程退出时，它的子进程需要变成 init 进程的子进程。init 进程的工作就是在一个循环中不停调用 wait，因为每个进程都需要对应一个 wait，这样它的父进程才能调用 freeproc 函数，并清理进程的资源</p>
+<p>当父进程完成了清理进程的所有资源，子进程的状态会被设置成 UNUSED。之后，fork 系统调用才能重用进程在进程表单的位置。直到子进程 exit 的最后，它都没有释放所有的资源，因为它还在运行的过程中，所以不能释放这些资源。最后是父进程释放了运行子进程代码所需要的资源。这样的设计可以让我们极大的精简 exit 的实现</p>
+<h2 id="kill">Kill</h2>
+<p>kill 的实现比想象中更加的&hellip;&hellip;朴素。Uni x中的一个进程可以将另一个进程的 ID 传递给 kill 系统调用，并让另一个进程停止运行。但是这会牵扯到上面讲过的问题，比如我们想要杀掉的进程的内核线程还在更新一些数据，像更新文件系统，创建一个文件之类的，我们不能就这样杀掉。所以 kill 系统调用不能直接停止目标进程的运行。实际上，在 xv6 和其他的 Unix 系统中，kill 基本上不做任何事情</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">// Kill the process with the given pid.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// The victim won&#39;t exit until it tries to return
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// to user space (see usertrap() in trap.c).
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">int</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">kill</span>(<span style="color:#66d9ef">int</span> pid)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>p;
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span>(p <span style="color:#f92672">=</span> proc; p <span style="color:#f92672">&lt;</span> <span style="color:#f92672">&amp;</span>proc[NPROC]; p<span style="color:#f92672">++</span>){
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span>(p<span style="color:#f92672">-&gt;</span>pid <span style="color:#f92672">==</span> pid){
+</span></span><span style="display:flex;"><span>            p<span style="color:#f92672">-&gt;</span>killed <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span>(p<span style="color:#f92672">-&gt;</span>state <span style="color:#f92672">==</span> SLEEPING){
+</span></span><span style="display:flex;"><span>                <span style="color:#75715e">// Wake process from sleep().
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>                p<span style="color:#f92672">-&gt;</span>state <span style="color:#f92672">=</span> RUNNABLE;
+</span></span><span style="display:flex;"><span>            }
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>它先扫描进程表单，找到目标进程。然后只是将进程的 proc 结构体中 killed 标志位设置为 1。如果进程正在 SLEEPING 状态，将其设置为 RUNNABLE</p>
+<p>而目标进程运行到内核代码中能安全停止运行的位置时，会检查自己的 killed 标志位，如果为 1，目标进程会自愿的执行 exit(-1)。在 usertrap 的最后就会做这样的检查，例如当一个定时器中断到来，usertrap 发现 p-&gt;killed === 1，就直接 exit 了</p>
+<p>所以 kill 系统调用并不是真正的立即停止进程的运行，从调用 kill，到另一个进程真正退出，中间可能有很明显的延时</p>
+<p>但其实在 xv6 的很多位置中，如果进程在 SLEEPING 状态时被 kill 了，进程会实际的退出。首先 kill 会将 SLEEPING 改为 RUNABLE，这样调度器线程会重新运行这个线程，而在很多地方的 sleep 循环内（比如下面的 piperead），会对 killed 进行检测：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#66d9ef">while</span>(pi<span style="color:#f92672">-&gt;</span>nread <span style="color:#f92672">==</span> pi<span style="color:#f92672">-&gt;</span>nwrite <span style="color:#f92672">&amp;&amp;</span> pi<span style="color:#f92672">-&gt;</span>writeopen){  <span style="color:#75715e">//DOC: pipe-empty
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">if</span>(pr<span style="color:#f92672">-&gt;</span>killed){
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>pi<span style="color:#f92672">-&gt;</span>lock);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">sleep</span>(<span style="color:#f92672">&amp;</span>pi<span style="color:#f92672">-&gt;</span>nread, <span style="color:#f92672">&amp;</span>pi<span style="color:#f92672">-&gt;</span>lock); <span style="color:#75715e">//DOC: piperead-sleep
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>}
+</span></span></code></pre></div><p>于是函数会立马返回到 usertrap，然后 exit</p>
+<p>因为 pipe 再度 sleep 的时候，pipe 内大概率还是没有数据，所以 kill 了影响不大。但是在更新文件系统这样的操作时， while 里面就不会检查 killed 了，因为必须等待这个操作完成</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#66d9ef">while</span>(b<span style="color:#f92672">-&gt;</span>disk <span style="color:#f92672">==</span> <span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">sleep</span>(b, <span style="color:#f92672">&amp;</span>disk.vdisk_lock);
+</span></span></code></pre></div>]]></content>
+        </item>
+        
+        <item>
+            <title>xv6 实验日志 - Thread</title>
+            <link>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;thread/</link>
+            <pubDate>Tue, 20 Aug 2024 16:35:21 +0000</pubDate>
+            
+            <guid>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;thread/</guid>
+            <description>在 xv6 中，我们认为线程就是单个串行执行代码的单元，它只占用一个CPU并且以普通的方式一个接一个的执行指令
+线程具有状态，我们可以随时保存线程的状态并暂停线程的运行，并在之后通过恢复状态来恢复线程的运行。线程的状态包含了三个部分：PC，寄存器，栈
+在 xv6 中，每个进程有两个线程，一个用户线程执行用户空间代码，一个内核线程处理系统调用之类的事，并且存在限制使得一个进程要么运行在用户空间线程，要么为了执行系统调用或者响应中断而运行在内核空间线程 ，但是永远也不会两者同时运行。除此之外，每个 CPU 都有一个调度器线程，这些调度器线程有自己独立的栈
+Linux 允许在一个用户进程中包含多个线程，进程中的多个线程共享进程的地址空间
+学生提问：操作系统都带了线程的实现，如果想要在多个CPU上运行一个进程内的多个线程，那需要通过操作系统来处理而不是用户空间代码，是吧？那这里的线程切换是怎么工作的？是每个线程都与进程一样了吗？操作系统还会遍历所有存在的线程吗？比如说我们有8个核，每个CPU核都会在多个进程的更多个线程之间切换。同时我们也不想只在一个CPU核上切换一个进程的多个线程，是吧？
+Robert教授：Linux是支持一个进程包含多个线程，Linux的实现比较复杂，或许最简单的解释方式是：几乎可以认为Linux中的每个线程都是一个完整的进程。Linux中，我们平常说一个进程中的多个线程，本质上是共享同一块内存的多个独立进程。所以Linux中一个进程的多个线程仍然是通过一个内存地址空间执行代码。如果你在一个进程创建了2个线程，那基本上是2个进程共享一个地址空间。之后，调度就与XV6是一致的，也就是针对每个进程进行调度
+在 xv6 和其他的操作系统中，线程调度是这么实现的：定时器中断会强制的将 CPU 控制权从用户进程给到内核，这里是 pre-emptive scheduling（先发制人，或防御性调度），之后内核会代表用户进程（注，实际是内核中用户进程对应的内核线程会代表用户进程出让CPU），使用 voluntary scheduling
+在执行线程调度的时候，操作系统需要能区分几类线程：
+RUNNING：当前在 CPU 上运行的线程
+RUNABLE： 一旦CPU有空闲时间就想要运行在CPU上的线程
+SLEEPING： 以及不想运行在CPU上的线程，因为这些线程可能在等待I/O或者其他事件
+对于 xv6 来说，并不会直接让用户线程出让CPU或者完成线程切换，而是由内核在合适的时间点做决定。内核会在两个场景下出让 CPU：一是定时器中断触发了，二是任何时候一个进程调用了系统调用并等待I/O
+当人们在说 context switching（上下文切换）时，可以指线程切换也可以指进程切换，还可以是用户与内核的切换。这里的 context switching 主要是指一个内核线程和调度器线程之间的切换
+每一个CPU核在一个时间只会做一件事情，每个CPU核在一个时间只会运行一个线程，它要么是运行用户进程的线程，要么是运行内核线程，要么是运行这个CPU核对应的调度器线程。所以在任何一个时间点，CPU核并没有做多件事情，而是只做一件事情。线程的切换创造了多个线程同时运行在一个CPU上的假象。类似的每一个线程要么是只运行在一个CPU核上，要么它的状态被保存在context中。线程永远不会运行在多个CPU核上，线程要么运行在一个CPU核上，要么就没有运行
+xv6 线程调度 用户进程切换流程 从一个用户进程切换到另一个用户进程，都需要从第一个用户进程接入到内核中，保存用户进程的状太并运行第一个用户进程的内核线程
+再从第一个用户进程的内核线程切换到 CPU 的调度线程
+调度线程选择好了之后会进入第二个用户进程的内核线程
+之后，第二个用户进程的内核线程暂停自己，并恢复第二个用户进程的用户寄存器
+最后返回到第二个用户进程继续执行
+状态保存位置 用户进程状态保存在 trapframe，内核线程状态保存在 proc 的 context，调度线程的状态保存在 cpu 的 context
+现在，我们可以重新看看这几个熟悉的结构体了：
+struct cpu { struct proc *proc; // The process running on this cpu, or null.</description>
+            <content type="html"><![CDATA[<p>在 xv6 中，我们认为线程就是单个串行执行代码的单元，它只占用一个CPU并且以普通的方式一个接一个的执行指令</p>
+<p>线程具有状态，我们可以随时保存线程的状态并暂停线程的运行，并在之后通过恢复状态来恢复线程的运行。线程的状态包含了三个部分：PC，寄存器，栈</p>
+<p>在 xv6 中，每个进程有两个线程，一个用户线程执行用户空间代码，一个内核线程处理系统调用之类的事，并且存在限制使得一个进程要么运行在用户空间线程，要么为了执行系统调用或者响应中断而运行在内核空间线程 ，但是永远也不会两者同时运行。除此之外，每个 CPU 都有一个调度器线程，这些调度器线程有自己独立的栈</p>
+<p>Linux 允许在一个用户进程中包含多个线程，进程中的多个线程共享进程的地址空间</p>
+<blockquote>
+<p>学生提问：操作系统都带了线程的实现，如果想要在多个CPU上运行一个进程内的多个线程，那需要通过操作系统来处理而不是用户空间代码，是吧？那这里的线程切换是怎么工作的？是每个线程都与进程一样了吗？操作系统还会遍历所有存在的线程吗？比如说我们有8个核，每个CPU核都会在多个进程的更多个线程之间切换。同时我们也不想只在一个CPU核上切换一个进程的多个线程，是吧？</p>
+<p>Robert教授：Linux是支持一个进程包含多个线程，Linux的实现比较复杂，或许最简单的解释方式是：几乎可以认为Linux中的每个线程都是一个完整的进程。Linux中，我们平常说一个进程中的多个线程，本质上是共享同一块内存的多个独立进程。所以Linux中一个进程的多个线程仍然是通过一个内存地址空间执行代码。如果你在一个进程创建了2个线程，那基本上是2个进程共享一个地址空间。之后，调度就与XV6是一致的，也就是针对每个进程进行调度</p>
+</blockquote>
+<p>在 xv6 和其他的操作系统中，线程调度是这么实现的：定时器中断会强制的将 CPU 控制权从用户进程给到内核，这里是 pre-emptive scheduling（先发制人，或防御性调度），之后内核会代表用户进程（注，实际是内核中用户进程对应的内核线程会代表用户进程出让CPU），使用 voluntary scheduling</p>
+<p>在执行线程调度的时候，操作系统需要能区分几类线程：</p>
+<ol>
+<li>
+<p>RUNNING：当前在 CPU 上运行的线程</p>
+</li>
+<li>
+<p>RUNABLE： 一旦CPU有空闲时间就想要运行在CPU上的线程</p>
+</li>
+<li>
+<p>SLEEPING： 以及不想运行在CPU上的线程，因为这些线程可能在等待I/O或者其他事件</p>
+</li>
+</ol>
+<p>对于 xv6 来说，并不会直接让用户线程出让CPU或者完成线程切换，而是由内核在合适的时间点做决定。内核会在两个场景下出让 CPU：一是定时器中断触发了，二是任何时候一个进程调用了系统调用并等待I/O</p>
+<p>当人们在说 context switching（上下文切换）时，可以指线程切换也可以指进程切换，还可以是用户与内核的切换。这里的 context switching 主要是指一个内核线程和调度器线程之间的切换</p>
+<p>每一个CPU核在一个时间只会做一件事情，每个CPU核在一个时间只会运行一个线程，它要么是运行用户进程的线程，要么是运行内核线程，要么是运行这个CPU核对应的调度器线程。所以在任何一个时间点，CPU核并没有做多件事情，而是只做一件事情。线程的切换创造了多个线程同时运行在一个CPU上的假象。类似的每一个线程要么是只运行在一个CPU核上，要么它的状态被保存在context中。线程永远不会运行在多个CPU核上，线程要么运行在一个CPU核上，要么就没有运行</p>
+<h2 id="xv6-线程调度">xv6 线程调度</h2>
+<h3 id="用户进程切换流程">用户进程切换流程</h3>
+<ol>
+<li>
+<p>从一个用户进程切换到另一个用户进程，都需要从第一个用户进程接入到内核中，保存用户进程的状太并运行第一个用户进程的内核线程</p>
+</li>
+<li>
+<p>再从第一个用户进程的内核线程切换到 CPU 的调度线程</p>
+</li>
+<li>
+<p>调度线程选择好了之后会进入第二个用户进程的内核线程</p>
+</li>
+<li>
+<p>之后，第二个用户进程的内核线程暂停自己，并恢复第二个用户进程的用户寄存器</p>
+</li>
+<li>
+<p>最后返回到第二个用户进程继续执行</p>
+</li>
+</ol>
+<h3 id="状态保存位置">状态保存位置</h3>
+<p>用户进程状态保存在 trapframe，内核线程状态保存在 proc 的 context，调度线程的状态保存在 cpu 的 context</p>
+<p>现在，我们可以重新看看这几个熟悉的结构体了：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> cpu {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>proc;          <span style="color:#75715e">// The process running on this cpu, or null.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">struct</span> context context;     <span style="color:#75715e">// swtch() here to enter scheduler().
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">int</span> noff;                   <span style="color:#75715e">// Depth of push_off() nesting.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">int</span> intena;                 <span style="color:#75715e">// Were interrupts enabled before push_off()?
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  };
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">struct</span> proc {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> spinlock lock;
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// p-&gt;lock must be held when using these:
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">enum</span> procstate state;        <span style="color:#75715e">// Process state
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>chan;                  <span style="color:#75715e">// If non-zero, sleeping on chan
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">int</span> killed;                  <span style="color:#75715e">// If non-zero, have been killed
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">int</span> xstate;                  <span style="color:#75715e">// Exit status to be returned to parent&#39;s wait
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">int</span> pid;                     <span style="color:#75715e">// Process ID
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// wait_lock must be held when using this:
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>parent;         <span style="color:#75715e">// Parent process
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// these are private to the process, so p-&gt;lock need not be held.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    uint64 kstack;               <span style="color:#75715e">// Virtual address of kernel stack
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    uint64 sz;                   <span style="color:#75715e">// Size of process memory (bytes)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">pagetable_t</span> pagetable;       <span style="color:#75715e">// User page table
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">struct</span> trapframe <span style="color:#f92672">*</span>trapframe; <span style="color:#75715e">// data page for trampoline.S
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">struct</span> context context;      <span style="color:#75715e">// swtch() here to run process
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">struct</span> file <span style="color:#f92672">*</span>ofile[NOFILE];  <span style="color:#75715e">// Open files
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">struct</span> inode <span style="color:#f92672">*</span>cwd;           <span style="color:#75715e">// Current directory
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">char</span> name[<span style="color:#ae81ff">16</span>];               <span style="color:#75715e">// Process name (debugging)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>};
+</span></span></code></pre></div><h3 id="源代码">源代码</h3>
+<p>在 devintr 中，检测到时钟中断会返回 2，值传给了 which_dev。在 usertrap 里检测到 which_dev == 2 会调用 yield()</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#66d9ef">void</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">yield</span>(<span style="color:#66d9ef">void</span>)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>p <span style="color:#f92672">=</span> <span style="color:#a6e22e">myproc</span>();
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);
+</span></span><span style="display:flex;"><span>    p<span style="color:#f92672">-&gt;</span>state <span style="color:#f92672">=</span> RUNNABLE;
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">sched</span>();
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>yield 首先获取了进程的锁。这是为了将进程的 state 修改为 RUNABLE 时不被其他的 CPU 调度</p>
+<p>然后进入 sched()。sched() 做了一堆合理性检查，然后走到 swtch（switch）</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#66d9ef">void</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">sched</span>(<span style="color:#66d9ef">void</span>)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> intena;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>p <span style="color:#f92672">=</span> <span style="color:#a6e22e">myproc</span>();
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span>(<span style="color:#f92672">!</span><span style="color:#a6e22e">holding</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock))
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">panic</span>(<span style="color:#e6db74">&#34;sched p-&gt;lock&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span>(<span style="color:#a6e22e">mycpu</span>()<span style="color:#f92672">-&gt;</span>noff <span style="color:#f92672">!=</span> <span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">panic</span>(<span style="color:#e6db74">&#34;sched locks&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span>(p<span style="color:#f92672">-&gt;</span>state <span style="color:#f92672">==</span> RUNNING)
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">panic</span>(<span style="color:#e6db74">&#34;sched running&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span>(<span style="color:#a6e22e">intr_get</span>())
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">panic</span>(<span style="color:#e6db74">&#34;sched interruptible&#34;</span>);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    intena <span style="color:#f92672">=</span> <span style="color:#a6e22e">mycpu</span>()<span style="color:#f92672">-&gt;</span>intena;
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">swtch</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>context, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">mycpu</span>()<span style="color:#f92672">-&gt;</span>context);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mycpu</span>()<span style="color:#f92672">-&gt;</span>intena <span style="color:#f92672">=</span> intena;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>swtch 在 swtch.S 中定义，a0 是内核线程 context 的地址，a1 则是调度器线程的。这个函数保存了内核线程状态，然后切换到了调度器线程</p>
+<pre tabindex="0"><code class="language-Risc-V" data-lang="Risc-V">    .globl swtch
+    swtch:
+            sd ra, 0(a0)
+            sd sp, 8(a0)
+            sd s0, 16(a0)
+            sd s1, 24(a0)
+            sd s2, 32(a0)
+            sd s3, 40(a0)
+            sd s4, 48(a0)
+            sd s5, 56(a0)
+            sd s6, 64(a0)
+            sd s7, 72(a0)
+            sd s8, 80(a0)
+            sd s9, 88(a0)
+            sd s10, 96(a0)
+            sd s11, 104(a0)
+    
+            ld ra, 0(a1)
+            ld sp, 8(a1)
+            ld s0, 16(a1)
+            ld s1, 24(a1)
+            ld s2, 32(a1)
+            ld s3, 40(a1)
+            ld s4, 48(a1)
+            ld s5, 56(a1)
+            ld s6, 64(a1)
+            ld s7, 72(a1)
+            ld s8, 80(a1)
+            ld s9, 88(a1)
+            ld s10, 96(a1)
+            ld s11, 104(a1)
+            
+            ret
+</code></pre><p>ra 寄存器记录这 swtch 的返回地址，因此没有必要保存 pc。在 context 中我们只保存了 14 个 Callee Saved Register，因为 swtch 的调用者应默认除此之外的寄存器会被修改</p>
+<p>内核线程的 ra 显然指向 sched() 内的下一条指令，但是调度器线程的 ra 是在 scheduler() 的某处。于是在 ret 之后进入到 scheduler()</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#66d9ef">void</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">scheduler</span>(<span style="color:#66d9ef">void</span>)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>p;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> cpu <span style="color:#f92672">*</span>c <span style="color:#f92672">=</span> <span style="color:#a6e22e">mycpu</span>();
+</span></span><span style="display:flex;"><span>      
+</span></span><span style="display:flex;"><span>    c<span style="color:#f92672">-&gt;</span>proc <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span>(;;){
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// Avoid deadlock by ensuring that devices can interrupt.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#a6e22e">intr_on</span>();
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span>(p <span style="color:#f92672">=</span> proc; p <span style="color:#f92672">&lt;</span> <span style="color:#f92672">&amp;</span>proc[NPROC]; p<span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span>(p<span style="color:#f92672">-&gt;</span>state <span style="color:#f92672">==</span> RUNNABLE) {
+</span></span><span style="display:flex;"><span>                <span style="color:#75715e">// Switch to chosen process.  It is the   process&#39;s job
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>                <span style="color:#75715e">// to release its lock and then reacquire it
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>                <span style="color:#75715e">// before jumping back to us.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>                p<span style="color:#f92672">-&gt;</span>state <span style="color:#f92672">=</span> RUNNING;
+</span></span><span style="display:flex;"><span>                c<span style="color:#f92672">-&gt;</span>proc <span style="color:#f92672">=</span> p;
+</span></span><span style="display:flex;"><span>                <span style="color:#a6e22e">swtch</span>(<span style="color:#f92672">&amp;</span>c<span style="color:#f92672">-&gt;</span>context, <span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>context);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>                <span style="color:#75715e">// Process is done running for now.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>                <span style="color:#75715e">// It should have changed its p-&gt;state before coming back.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>                c<span style="color:#f92672">-&gt;</span>proc <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>            }
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>此时的 pc 应该在 scheduler() 的 swtch 的下方。但是，我们刚刚返回的 swtch 和这里的 swtch 不是一个 swtch。它们所在的线程不同，而且传参的顺序不一样。这里的 swtch 显然是从调度器线程切换到新的内核线程</p>
+<p>切换到调度器线程后，CPU 自然就没有在运行用户进程了，所以我们将 c-&gt;proc 设置为 0</p>
+<p>之前 yield 为了防止线程切换被其他的调度器线程打断而申请了锁，现在我们完成了这一步骤，可以释放锁了</p>
+<p>在调度的过程中锁完成了两件事：</p>
+<ol>
+<li>
+<p>首先，出让 CPU 涉及到很多步骤，我们需要将进程的状态从 RUNNING 改成 RUNABLE，我们需要将进程的寄存器保存在 context 对象中，并且我们还需要停止使用当前进程的栈。在这三个步骤完成之前，锁阻止任何一个其他核的调度器线程看到当前进程，确保了三个步骤的原子性。从CPU核的角度来说，三个步骤要么全发生，要么全不发生</p>
+</li>
+<li>
+<p>当我们开始要运行一个进程时，p-&gt;lock 也有类似的保护功能。我们希望启动一个进程的过程也具有原子性，这也是为什么 scheduler 加锁</p>
+</li>
+</ol>
+<p>好，接下来代码会在一个死循环内检查所有的进程并找到一个来运行。找到之后，通过 swtch 来到这个新的内核线程的 sched()，返回 yield()，usertrap()，usertrapret()，在 userret 返回到对应的新用户进程</p>
+<p>关于第一个 swtch 调用，请看<a href="https://mit-public-courses-cn-translatio.gitbook.io/mit6-s081/lec11-thread-switching-robert/11.9-xv6-call-switch-function-first-time">这里</a></p>
+]]></content>
+        </item>
+        
+        <item>
+            <title>xv6 实验日志 - Lock</title>
+            <link>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;lock/</link>
+            <pubDate>Mon, 19 Aug 2024 20:07:43 +0000</pubDate>
+            
+            <guid>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;lock/</guid>
+            <description>刚开始接触这个概念的时候觉得锁更像是通行证一类的东西。问了下 AI，它这么和我解释：
+锁（Lock）通常用于确保同一时间只有一个进程或线程能够访问某个资源。当进程或线程想要访问资源时，它必须先获得锁，完成操作后释放锁。这有点像是进入一个房间，你必须拿到钥匙（锁）才能进入，用完后再把钥匙还回去，这样其他人才能使用
+锁就是一个对象，就像其他在内核中的对象一样。有一个结构体叫做 lock，它包含了一些字段，这些字段中维护了锁的状态。锁有非常直观的 API：
+acquire，接收指向 lock 的指针作为参数。acquire 确保了在任何时间，只会有一个进程能够成功的获取锁
+release，也接收指向 lock 的指针作为参数。在同一时间尝试获取锁的其他进程需要等待，直到持有锁的进程对锁调用 release
+锁的 acquire 和 release 之间的代码，通常被称为 critical section
+之所以被称为 critical section，是因为通常会在这里以原子的方式执行共享数据的更新。所以基本上来说，如果在 acquire 和 release 之间有多条指令，它们要么会一起执行，要么一条也不会执行。所以永远也不可能看到位于 critical section 中的代码，如同在 race condition 中一样在多个 CPU 上交织的执行，所以这样就能避免 race condition
+锁序列化了代码的执行。如果两个处理器想要进入到同一个 critical section 中，只会有一个能成功进入，另一个处理器会在第一个处理器从 critical section 中退出之后再进入。所以这里完全没有并行执行
+锁的使用完全是由程序员决定的。如果你想要一段代码具备原子性，那么其实是由程序员决定是否增加锁的 acquire 和 release。其次，代码不会自动加锁，程序员自己要确定好是否将锁与数据结构关联，并在适当的位置增加锁的 acquire 和 release
+什么时候用锁 一个简单的规则 一个非常保守同时也是非常简单的规则：如果两个进程访问了一个共享的数据结构，并且其中一个进程会更新共享的数据结构，那么就需要对于这个共享的数据结构加锁
+但这条规则又很矛盾：这条规则某种程度上来说又太过严格了。如果有两个进程共享一个数据结构，并且其中一个进程会更新这个数据结构，在某些场合不加锁也可以正常工作；而有时候这个规则又太过宽松了。除了共享的数据，在一些其他场合也需要锁，例如对于 printf，如果我们将一个字符串传递给它，xv6 会尝试原子性的将整个字符串输出，而不是与其他进程的 printf 交织输出。尽管这里没有共享的数据结构，但在这里锁仍然很有用处，因为我们想要printf的输出也是序列化的
+好吧，这条规则并不完美，但是它已经是一个足够好的指导准则
+自动加锁 如果按照刚刚的简单规则，一旦我们有了一个共享的数据结构，任何操作这个共享数据结构都需要获取锁，那么对其进行操作时自动地获取锁即可
+但是这样并不行，假如说我要把 ~/dir1/x 文件 mv 到 ~/dir2/y，那么按照这条规则，先对 x 加锁，删除 x，然后释放锁；再对 y 加锁，创建 y，接着释放锁。</description>
+            <content type="html"><![CDATA[<p>刚开始接触这个概念的时候觉得锁更像是通行证一类的东西。问了下 AI，它这么和我解释：</p>
+<p>锁（Lock）通常用于确保同一时间只有一个进程或线程能够访问某个资源。当进程或线程想要访问资源时，它必须先获得锁，完成操作后释放锁。这有点像是进入一个房间，你必须拿到钥匙（锁）才能进入，用完后再把钥匙还回去，这样其他人才能使用</p>
+<p>锁就是一个对象，就像其他在内核中的对象一样。有一个结构体叫做 lock，它包含了一些字段，这些字段中维护了锁的状态。锁有非常直观的 API：</p>
+<ul>
+<li>
+<p>acquire，接收指向 lock 的指针作为参数。acquire 确保了在任何时间，只会有一个进程能够成功的获取锁</p>
+</li>
+<li>
+<p>release，也接收指向 lock 的指针作为参数。在同一时间尝试获取锁的其他进程需要等待，直到持有锁的进程对锁调用 release</p>
+</li>
+</ul>
+<p>锁的 acquire 和 release 之间的代码，通常被称为 critical section</p>
+<p>之所以被称为 critical section，是因为通常会在这里以原子的方式执行共享数据的更新。所以基本上来说，如果在 acquire 和 release 之间有多条指令，它们要么会一起执行，要么一条也不会执行。所以永远也不可能看到位于 critical section 中的代码，如同在 race condition 中一样在多个 CPU 上交织的执行，所以这样就能避免 race condition</p>
+<p>锁序列化了代码的执行。如果两个处理器想要进入到同一个 critical section 中，只会有一个能成功进入，另一个处理器会在第一个处理器从 critical section 中退出之后再进入。所以这里完全没有并行执行</p>
+<p>锁的使用完全是由程序员决定的。如果你想要一段代码具备原子性，那么其实是由程序员决定是否增加锁的 acquire 和 release。其次，代码不会自动加锁，程序员自己要确定好是否将锁与数据结构关联，并在适当的位置增加锁的 acquire 和 release</p>
+<h2 id="什么时候用锁">什么时候用锁</h2>
+<h3 id="一个简单的规则">一个简单的规则</h3>
+<p>一个非常保守同时也是非常简单的规则：如果两个进程访问了一个共享的数据结构，并且其中一个进程会更新共享的数据结构，那么就需要对于这个共享的数据结构加锁</p>
+<p>但这条规则又很矛盾：这条规则某种程度上来说又太过严格了。如果有两个进程共享一个数据结构，并且其中一个进程会更新这个数据结构，在某些场合不加锁也可以正常工作；而有时候这个规则又太过宽松了。除了共享的数据，在一些其他场合也需要锁，例如对于 printf，如果我们将一个字符串传递给它，xv6 会尝试原子性的将整个字符串输出，而不是与其他进程的 printf 交织输出。尽管这里没有共享的数据结构，但在这里锁仍然很有用处，因为我们想要printf的输出也是序列化的</p>
+<p>好吧，这条规则并不完美，但是它已经是一个足够好的指导准则</p>
+<h3 id="自动加锁">自动加锁</h3>
+<p>如果按照刚刚的简单规则，一旦我们有了一个共享的数据结构，任何操作这个共享数据结构都需要获取锁，那么对其进行操作时自动地获取锁即可</p>
+<p>但是这样并不行，假如说我要把 ~/dir1/x 文件 mv 到 ~/dir2/y，那么按照这条规则，先对 x 加锁，删除 x，然后释放锁；再对 y 加锁，创建 y，接着释放锁。</p>
+<p>文件系统具有一致性要求，即文件在任何时候看起来都是存在的。但是，在 x 删除完成，而 y 未创建之际，在其他进程的视角下，文件消失了</p>
+<p>换言之，我们希望 mv 的操作是原子的，正确的解决方法是，我们在重命名的一开始就对d1和d2加锁，之后删除x再添加y，最后再释放对于d1和d2的锁。</p>
+<p>在这个例子中，我们的操作需要涉及到多个锁，但是直接为每个对象自动分配一个锁会带来错误的结果。在这个例子中，锁应该与操作而不是数据关联，所以自动加锁在某些场景下会出问题</p>
+<blockquote>
+<p>学生提问：可不可以在访问某个数据结构的时候，就获取所有相关联的数据结构的锁？</p>
+<p>Frans教授：这是一种实现方式。但是这种方式最后会很快演进成big kernel lock，这样你就失去了并发执行的能力，但是你肯定想做得更好。这里就是使用锁的矛盾点了，如果你想要程序简单点，可以通过coarse-grain locking（注，也就是大锁），但是这时你就失去了性能。</p>
+</blockquote>
+<h2 id="死锁">死锁</h2>
+<p>一个死锁的最简单的场景就是：首先 acquire 一个锁，然后进入到 critical section；在 critical section 中，再 acquire 同一个锁；第二个 acquire 必须要等到第一个 acquire 状态被 release 了才能继续执行，但是不继续执行的话又走不到第一个 release，所以程序就一直卡在这了。这就是一个死锁</p>
+<p>当有多个锁的时候，场景会更加有趣。假设现在我们有两个 CPU，一个是 CPU1，另一个是 CPU2。CPU1 执行 rename 将文件 d1/x 移到 d2/y，CPU2 执行 rename 将文件 d2/a 移到 d1/b。这里 CPU1 将文件从 d1 移到 d2，CPU2 正好相反将文件从 d2 移到 d1。我们假设我们按照参数的顺序来 acquire 锁，那么 CPU1 会先获取 d1 的锁，如果程序是真正的并行运行，CPU2 同时也会获取 d2 的锁。之后 CPU1 需要获取 d2 的锁，这里不能成功，因为 CPU2 现在持有锁，所以 CPU1 会停在这个位置等待 d2 的锁释放。而另一个 CPU2，接下来会获取 d1 的锁，它也不能成功，因为 CPU1 现在持有锁。这也是死锁的一个例子，有时候这种场景也被称为 deadly embrace。这里的死锁就没那么容易探测了</p>
+<p>这里的解决方案是，如果你有多个锁，你需要对锁进行排序，所有的操作都必须以相同的顺序获取锁</p>
+<p>所以对于一个系统设计者，你需要确定对于所有的锁对象的全局的顺序。例如在这里的例子中我们让 d1 一直在 d2 之前，这样我们在 rename 的时候，总是先获取排序靠前的目录的锁，再获取排序靠后的目录的锁。如果对于所有的锁有了一个全局的排序，这里的死锁就不会出现了</p>
+<p>但是这样的话，如果一个模块 m1 中方法 g 调用了另一个模块 m2 中的方法 f，那么 m1 中的方法 g 需要知道 m2 的方法 f 使用了哪些锁。因为如果 m2 使用了一些锁，那么 m1 的方法 g 必须集合 f 和 g 中的锁，并形成一个全局的锁的排序</p>
+<p>这样违背了代码抽象的原则。m1 理应完全不知道 m2 的实现。但是具体实现中，m2 内部的锁需要泄露给 m1，这样 m1 才能完成全局锁排序。所以在设计一些更大的系统时，锁使得代码的模块化更加的复杂了</p>
+<h2 id="锁与性能">锁与性能</h2>
+<p>如果只有一个 big kernel lock，那么操作系统只能被一个 CPU 运行，然而大概从 2000 年开始，CPU 的单线程性能达到了一个极限并且也没有再增加过。如果要利用好多核性能，我们需要拆分锁</p>
+<p>如果你重新设计了加锁的规则，你需要确保不破坏内核一直尝试维护的数据不变性，你可能需要重写代码，重构部分内核或者程序。所以这里就有矛盾点了。我们想要获得更好的性能，那么我们需要有更多的锁，但是这又引入了大量的工作</p>
+<h2 id="自旋锁spin-lock的实现">自旋锁（Spin lock）的实现</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">// Mutual exclusion lock.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">struct</span> spinlock {
+</span></span><span style="display:flex;"><span>  uint locked;       <span style="color:#75715e">// Is the lock held?
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// For debugging:
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>name;        <span style="color:#75715e">// Name of lock.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">struct</span> cpu <span style="color:#f92672">*</span>cpu;   <span style="color:#75715e">// The cpu holding the lock.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>};
+</span></span></code></pre></div><h3 id="amoswap">amoswap</h3>
+<p>锁的特性就是只有一个进程可以获取锁，在任何时间点都不能有超过一个锁的持有者。</p>
+<p>实现锁的主要难点在于锁的 acquire 接口，在 acquire 里面有一个死循环，循环中判断锁对象的 locked 字段是否为 0，如果为 0 那表明当前锁没有持有者，对于当前的 acquire 的调用可以获取锁。之后我们通过设置锁对象的 locked 字段为1来获取锁。最后返回</p>
+<p>但是完全有可能出现这种情况：两个进程同时卡在 acquire，同时看到锁的 locked 字段为 0，接着同时设置 locked = 1，然后同时获得了锁</p>
+<p>最常见的解决方案是利用特殊的硬件指令，在 RISC-V 上这个指令是 amoswap（amo 是 Atomic Memory Operations 的缩写）</p>
+<pre><code>amoswapamoswap r1, r2, (address)
+</code></pre>
+<p>这条指令会先锁定住 address，将 address 中的数据保存在一个临时变量中（tmp），之后将 r1 中的数据写入到地址中，之后再将保存在临时变量中的数据写入到 r2 中，最后再对于地址解锁。即最后 r1 维持不变，r2 保存了 address 处原来的值，地址 address 处的值变更为 r1</p>
+<p>这里不能使用 sd 写 address。在硬件层面上，sd 会被分成几个子操作，在执行 sd 指令的过程中，处理器可能会被中断，导致指令执行被暂时挂起；在多处理器系统中，sd 指令执行后，新写入的值可能不会立即对所有处理器可见</p>
+<p>xv6 中 acquire 源代码如下：</p>
+<pre><code>void
+acquire(struct spinlock *lk)
+{
+  push_off(); // disable interrupts to avoid deadlock.
+  if(holding(lk))
+    panic(&quot;acquire&quot;);
+
+  // On RISC-V, sync_lock_test_and_set turns into an atomic swap:
+  //   a5 = 1
+  //   s1 = &amp;lk-&gt;locked
+  //   amoswap.w.aq a5, a5, (s1)
+  while(__sync_lock_test_and_set(&amp;lk-&gt;locked, 1) != 0)
+    ;
+
+  // Tell the C compiler and the processor to not move loads or stores
+  // past this point, to ensure that the critical section's memory
+  // references happen strictly after the lock is acquired.
+  // On RISC-V, this emits a fence instruction.
+  __sync_synchronize();
+
+  // Record info about lock acquisition for holding() and debugging.
+  lk-&gt;cpu = mycpu();
+}
+</code></pre>
+<p>可以看到循环判断 locked 的部分的汇编代码</p>
+<pre><code>  while(__sync_lock_test_and_set(&amp;lk-&gt;locked, 1) != 0)
+    800062ba:	87ba                	mv	a5,a4
+    800062bc:	0cf4a7af          	amoswap.w.aq	a5,a5,(s1)
+    800062c0:	2781                	sext.w	a5,a5
+    800062c2:	ffe5                	bnez	a5,800062ba &lt;acquire+0x22&gt;
+</code></pre>
+<h3 id="关闭中断">关闭中断</h3>
+<p>这里还又一处细节：在 acquire 最开始通过 push_off 关闭了中断</p>
+<p>以 UART 为例，这个设备使用 uart_tx_lock 一把大锁。假设当 top 驱动向 uart 写入字符时，最终会调用 uartputc。uartputc 函数会 acquire 锁，当 UART 完成了字符传输之后会产生一个中断，之后会运行 uartintr 函数，这个函数也会获取同一把锁，但是这把锁正在被 uartputc 持有。如果只有一个 CPU 的话，那就形成了死锁</p>
+<p>我们需要在 acquire 中关闭中断。中断会在 release 的结束位置再次打开，因为在这个位置才能再次安全的接收中断</p>
+<h3 id="synchronize">synchronize</h3>
+<p>第三个细节就是 memory ordering。编译器或者处理器可能会重排指令以获得更好的性能，但是对于并发执行，这将会是一个灾难。如果我们将 critical section 与加锁解锁放在不同的CPU执行，将会得到完全错误的结果。所以指令重新排序在并发场景是错误的。为了禁止，或者说为了告诉编译器和硬件不要这样做，我们需要使用 memory fence 或者叫做 synchronize 指令，来确定指令的移动范围。对于 synchronize 指令，任何在它之前的 load/store 指令，都不能移动到它之后。锁的 acquire 和 release 函数都包含了synchronize指令。</p>
+<h2 id="结束语">结束语</h2>
+<p>首先，锁确保了正确性，但是同时又会降低性能，这是个令人失望的现实，我们是因为并发运行代码才需要使用锁，而锁另一方面又限制了代码的并发运行</p>
+<p>其次锁会增加编写程序的复杂性，在我们的一些实验中会看到锁，我们需要思考锁为什么在这，它需要保护什么。如果你在程序中使用了并发，那么一般都需要使用锁。如果你想避免锁带来的复杂性，可以遵循以下原则：不到万不得已不要共享数据。如果你不在多个进程之间共享数据，那么 race condition 就不可能发生，那么你也就不需要使用锁，程序也不会因此变得复杂。但是通常来说如果你有一些共享的数据结构，那么你就需要锁，你可以从 coarse-grained lock（直译是粗粒度锁，理解为大锁）开始，然后基于测试结果，向 fine-grained lock 演进</p>
+<p>最后，使用 race detector 来找到 race condition，如果你将锁的 acquire 和 release 放置于错误的位置，那么就算使用了锁还是会有 race</p>
+]]></content>
+        </item>
+        
+        <item>
+            <title>xv6 实验日志 - Interrupts</title>
+            <link>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;interrupts/</link>
+            <pubDate>Mon, 19 Aug 2024 10:52:05 +0000</pubDate>
+            
+            <guid>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;interrupts/</guid>
+            <description>虽然以中断为名，但这里并不涉及软件中断和计时器中断。这里只为搞清一件事情：xv6 Console 的 $ ls 是怎么出现的
+我们从 xv6 的启动开始讲起
+设置中断 在 kernel.ld 中定义了 _entry 为入口点
+_entry 最后跳转到了 start（在 kernel/start.c 中）
+start 将所有的中断都设置在Supervisor mode，然后设置SIE寄存器来接收External，软件和定时器中断，之后初始化定时器。通过设置 mepc 为 main，然后执行 mret，跳转到 main（kernel/main.c）中
+main 中最先调用 consoleinit()，这个函数初始化了锁，调用 uartinit() 后设置了 consoleread/write，是方便后续系统调用读写时做分发
+uartinit() 先关闭中断，设置了一堆寄存器，最后打开了中断。原则上UART就可以生成中断了，但是还没处理 PLIC（Platform Level Interrupt Control，处理器用于处理设备中断）
+中断到达PLIC之后，PLIC会路由这些中断。PLIC会将中断路由到某一个CPU的核。如果所有的CPU核都正在处理中断，PLIC会保留中断直到有一个CPU核可以用来处理中断。所以PLIC需要保存一些内部数据来跟踪中断的状态。
+这里的具体流程是：
+PLIC会通知当前有一个待处理的中断
+其中一个CPU核会Claim接收中断，这样PLIC就不会把中断发给其他的CPU处理
+CPU核处理完中断之后，CPU会通知PLIC
+PLIC将不再保存中断的信息
+在 main() 函数的后面部分调用了 plicinit() 与 plicinithart()。plicinit() 使能 PLIC 接受 UART 与 VIRTIO 的中断。plicinithart() 则让每个 CPU 声明其可处理 UART 与 VIRTIO 的中断，并设置了优先级
+在 main 最后的 scheduler 函数中会调用 intr_on()。这个函数设置了 sstatus 的 SIE，打开中断标志位，这样 CPU 就有能力接受中断了</description>
+            <content type="html"><![CDATA[<p>虽然以中断为名，但这里并不涉及软件中断和计时器中断。这里只为搞清一件事情：xv6 Console 的 <code>$ ls</code> 是怎么出现的</p>
+<p>我们从 xv6 的启动开始讲起</p>
+<h2 id="设置中断">设置中断</h2>
+<p>在 kernel.ld 中定义了 _entry 为入口点</p>
+<p>_entry 最后跳转到了 start（在 kernel/start.c 中）</p>
+<p>start 将所有的中断都设置在Supervisor mode，然后设置SIE寄存器来接收External，软件和定时器中断，之后初始化定时器。通过设置 mepc 为 main，然后执行 mret，跳转到 main（kernel/main.c）中</p>
+<p>main 中最先调用 consoleinit()，这个函数初始化了锁，调用 uartinit() 后设置了 consoleread/write，是方便后续系统调用读写时做分发</p>
+<p>uartinit() 先关闭中断，设置了一堆寄存器，最后打开了中断。原则上UART就可以生成中断了，但是还没处理 PLIC（Platform Level Interrupt Control，处理器用于处理设备中断）</p>
+<p>中断到达PLIC之后，PLIC会路由这些中断。PLIC会将中断路由到某一个CPU的核。如果所有的CPU核都正在处理中断，PLIC会保留中断直到有一个CPU核可以用来处理中断。所以PLIC需要保存一些内部数据来跟踪中断的状态。</p>
+<p>这里的具体流程是：</p>
+<ol>
+<li>
+<p>PLIC会通知当前有一个待处理的中断</p>
+</li>
+<li>
+<p>其中一个CPU核会Claim接收中断，这样PLIC就不会把中断发给其他的CPU处理</p>
+</li>
+<li>
+<p>CPU核处理完中断之后，CPU会通知PLIC</p>
+</li>
+<li>
+<p>PLIC将不再保存中断的信息</p>
+</li>
+</ol>
+<p>在 main() 函数的后面部分调用了 plicinit() 与 plicinithart()。plicinit() 使能 PLIC 接受 UART 与 VIRTIO 的中断。plicinithart() 则让每个 CPU 声明其可处理 UART 与 VIRTIO 的中断，并设置了优先级</p>
+<p>在 main 最后的 scheduler 函数中会调用 intr_on()。这个函数设置了 sstatus 的 SIE，打开中断标志位，这样 CPU 就有能力接受中断了</p>
+<h2 id="uart-驱动">UART 驱动</h2>
+<p>大部分驱动都分为两个部分，bottom/top</p>
+<p>bottom 部分通常是 Interrupt handler。当一个中断送到了 CPU，并且 CPU 设置接收这个中断，CPU 会调用相应的 Interrupt handler。Interrupt handler 并不运行在任何特定进程的 context 中，它只是处理中断</p>
+<p>top 部分，是用户进程，或者内核的其他部分调用的接口。对于 UART 来说，这里有 read/write 接口，这些接口可以被更高层级的代码调用</p>
+<p>接下来会较为详细地说明这个步骤以便理解</p>
+<h2 id="uart-top">UART top</h2>
+<p>在 main 中的 userinit() 里面创建了一个新的进程，手写了 exec(&quot;/init&quot;) 的可执行二进制码保存到 initcode[] 中，再将其复制，映射到此进程用户页表地址为 0 的地方</p>
+<p>即 schedule() 之后运行的第一个进程的代码在 user/init.c 里面</p>
+<p>它首先创造了 Console 设备（文件），文件描述符为 0（stdin），又调用两个 dup(0) 打开了 stdout 和 stderr，这三个 fd 0，1，2 都代表 Console</p>
+<p>init 又 exec 打开了 sh，开启了 Shell。Shell 调用了 getcmd()，用 fprintf 向 stderr 打印了 “$ &quot;</p>
+<p>尽管Console背后是UART设备，但是从应用程序来看，它就像是一个普通的文件。Shell程序只是向文件描述符2写了数据，它并不知道文件描述符2对应的是什么</p>
+<p>实质上，无论是 printf 还是 fprintf，最终会触发 write 系统调用。通过前面的 Trap 实验我们知道，陷入内核之后会来到 sys_write</p>
+<p>sys_write 对参数做了检查之后，调用了 filewrite()（kernel/file.c）</p>
+<p>filewrite 会根据传参进来的文件判断其类型，再根据类型进行分发。fd 2 的文件的 type 属于 FD_DEVICE，是 Console 设备。根据此前 consoleinit() 的设置，分发到了 consolewrite()（kernel/console.c）</p>
+<p>consolewrite 的 either_copyin 只是对 copyin 和 memmove 封装，可以接受用户或者内核的地址。通过其获取字符之后，调用了 uartputc()</p>
+<p>uartputc 内有一个大小为 32 的 buffer，有两个表示读和写的指针（环形队列）。uartputc 会进入一个 while(1) 循环，如果环形队列满了，就 sleep 等待，直到有空闲之时，便向其内写入字符，调用 uartstart() 后返回</p>
+<p>uartstart 就是通知设备执行操作。首先是检查当前设备是否空闲，如果空闲的话，我们会从buffer中读出数据，然后将数据写入到 THR（Transmission Holding Register）发送寄存器。这里相当于告诉设备，我这里有一个字节需要你来发送。一旦数据送到了设备，系统调用会返回（就是 trap 的流程），用户应用程序Shell就可以继续执行</p>
+<p>与此同时，UART 设备会将数据送出。在某个时间点，我们会收到中断，因为我们之前设置了要处理 UART 设备中断。接下来我们看一下，当发生中断时，实际会发生什么</p>
+<p>P.S. 我认为 THR 将字符发送出去之后，Console 就可以将这个字符显示出来了。之后 UART 触发中断应该是为了通知 CPU 可以发送下一个字符。但是，这只是猜测</p>
+<h2 id="uart-bottom">UART bottom</h2>
+<p>中断发生时，PLIC 将此中断发送给了一个特定的 CPU 核，那么会发生以下事情：</p>
+<ol>
+<li>
+<p>首先，会清除 SIE 寄存器相应的 bit，这样可以阻止 CPU 核被其他中断打扰</p>
+</li>
+<li>
+<p>之后，会设置 SEPC 寄存器为当前的程序计数器</p>
+</li>
+<li>
+<p>存当前的 mode，最后跳转到 STVEC 所指处</p>
+</li>
+</ol>
+<p>trap.c 中，会通过 devintr() 判断时软件中断还是外部中断</p>
+<p>devintr 首先会通过 SCAUSE寄 存器判断当前中断是否是来自于外设的中断。如果是的话，再调用 plic_claim 函数来获取中断</p>
+<p>plic_claim 返回一个中断号。devintr 通过中断号发现是 UART 中断，于是调用 uartintr</p>
+<p>uart 首先会调用 uartgetc() 查询 UART 是否有等待中的字符，有的话（比如来自键盘输入）就将其传入 consoleintr()，默认情况下最后还是写在 THR。没有的话就运行 uartstart()。在上面打印完 “$&quot; 后发现 buffer 里面还有一个空格，于是把它也发送出去</p>
+<p>正如 UART 驱动所写，bottom 是一个中断处理器，top 则是对外的接口。这样，驱动的top部分和bottom部分就解耦开了</p>
+<h2 id="uart-读取键盘">UART 读取键盘</h2>
+<p>键盘的读取也是通过 read。像上面一样，通过 sys_read -&gt; fileread -&gt; consoleread</p>
+<p>Console 也维护了一个 buffer，包含了128个字符。其他的基本一样。在这个场景下 Shell 变成了 consumser，而键盘是 producer</p>
+<p>在 consoleread 函数中，buffer 为空时，进程会 sleep。所以 Shell 在打印完 “$ ” 之后，如果键盘没有输入，Shell 进程会 sleep，直到键盘有一个字符输入。所以在某个时间点，假设用户通过键盘输入了 “l”，这会导致 “l” 被发送到主板上的UART芯片，产生中断之后再被 PLIC 路由到某个 CPU 核，之后会触发 devintr 函数，devintr 可以发现这是一个 UART 中断，然后通过 uartgetc 函数获取到相应的字符，之后再将字符传递给 consoleintr 函数（就像上文说的）</p>
+<p>默认情况下，字符会通过 consputc，输出到 console 上给用户查看。之后，字符被存放在buffer中。在遇到换行符的时候，唤醒之前 sleep 的进程，也就是 Shell，再从 buffer 中将数据读出</p>
+<p>所以这里也是通过 buffer 将 consumer 和 producer 之间解耦，这样它们才能按照自己的速度，独立的并行运行。如果某一个运行的过快了，那么 buffer 要么是满的要么是空的，consumer 和 producer 其中一个会 sleep 并等待另一个追上来</p>
+]]></content>
+        </item>
+        
+        <item>
+            <title>xv6 实验日志 - Page Table</title>
+            <link>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;page&#43;table/</link>
+            <pubDate>Thu, 15 Aug 2024 10:56:03 +0000</pubDate>
+            
+            <guid>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;page&#43;table/</guid>
+            <description>页表 这张图片很好地说明了 xv6 页表机制
+其中补充说明几点：
+虚拟地址由三部分所组成：EXT（无实际作用，忽略），三级页表的 index，以及物理页的偏移量 offset
+每个页表占据一个 PGSIZE 的空间 （4096 bytes），每个页表内有 512 个条目，称为 PTE。每个 PTE 有 64 位，由 PPN 与 Flag 所组成。
+对于第一，第二级页表的 PPN，其所指向的是下一级页表的物理地址（由 PPN &amp;laquo; 12 可得）。第三级页表的 PPN 指向的是虚拟地址所映射的物理页的起始地址，加上 va 的 offset 便可得到实际的 pa
+satp 寄存器指向第一级页表的物理地址
+PTE 中的 flag 在图片的下方有详细的描述
+OS 对于地址的映射有绝对的控制权，可以任意地将某个虚拟页映射到某个物理页
+虚拟地址到物理地址转换的步骤是由硬件的 MMU 实现的，OS 负责处理页表。但在 xv6 中有 walk() 函数模拟这一点，因为 xv6 通过直接写物理地址来实现内核空间与用户空间的传参
+// Return the address of the PTE in page table pagetable // that corresponds to virtual address va.</description>
+            <content type="html"><![CDATA[<h2 id="页表">页表</h2>
+<p>这张图片很好地说明了 xv6 页表机制</p>
+<p><img alt="page table.png" src="/upload/page%20table.png"></p>
+<p>其中补充说明几点：</p>
+<ol>
+<li>
+<p>虚拟地址由三部分所组成：EXT（无实际作用，忽略），三级页表的 index，以及物理页的偏移量 offset</p>
+</li>
+<li>
+<p>每个页表占据一个 PGSIZE 的空间 （4096 bytes），每个页表内有 512 个条目，称为 PTE。每个 PTE 有 64 位，由 PPN 与 Flag 所组成。</p>
+</li>
+<li>
+<p>对于第一，第二级页表的 PPN，其所指向的是下一级页表的物理地址（由 PPN &laquo; 12 可得）。第三级页表的 PPN 指向的是虚拟地址所映射的物理页的起始地址，加上 va 的 offset 便可得到实际的 pa</p>
+</li>
+<li>
+<p>satp 寄存器指向第一级页表的物理地址</p>
+</li>
+<li>
+<p>PTE 中的 flag 在图片的下方有详细的描述</p>
+</li>
+<li>
+<p>OS 对于地址的映射有绝对的控制权，可以任意地将某个虚拟页映射到某个物理页</p>
+</li>
+<li>
+<p>虚拟地址到物理地址转换的步骤是由硬件的 MMU 实现的，OS 负责处理页表。但在 xv6 中有 walk() 函数模拟这一点，因为 xv6 通过直接写物理地址来实现内核空间与用户空间的传参</p>
+</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">// Return the address of the PTE in page table pagetable
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// that corresponds to virtual address va.  If alloc!=0,
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// create any required page-table pages.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">//
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// The risc-v Sv39 scheme has three levels of page-table
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// pages. A page-table page contains 512 64-bit PTEs.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// A 64-bit virtual address is split into five fields:
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">//   39..63 -- must be zero.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">//   30..38 -- 9 bits of level-2 index.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">//   21..29 -- 9 bits of level-1 index.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">//   12..20 -- 9 bits of level-0 index.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">//    0..11 -- 12 bits of byte offset within the page.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">pte_t</span> <span style="color:#f92672">*</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">walk</span>(<span style="color:#66d9ef">pagetable_t</span> pagetable, uint64 va, <span style="color:#66d9ef">int</span> alloc)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span>(va <span style="color:#f92672">&gt;=</span> MAXVA)
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">panic</span>(<span style="color:#e6db74">&#34;walk&#34;</span>);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span>(<span style="color:#66d9ef">int</span> level <span style="color:#f92672">=</span> <span style="color:#ae81ff">2</span>; level <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>; level<span style="color:#f92672">--</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">pte_t</span> <span style="color:#f92672">*</span>pte <span style="color:#f92672">=</span> <span style="color:#f92672">&amp;</span>pagetable[<span style="color:#a6e22e">PX</span>(level, va)];
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 根据 va 中的 index 确认 pte 的位置
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#66d9ef">if</span>(<span style="color:#f92672">*</span>pte <span style="color:#f92672">&amp;</span> PTE_V) {
+</span></span><span style="display:flex;"><span>            pagetable <span style="color:#f92672">=</span> (<span style="color:#66d9ef">pagetable_t</span>)<span style="color:#a6e22e">PTE2PA</span>(<span style="color:#f92672">*</span>pte);
+</span></span><span style="display:flex;"><span>        } <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span>(<span style="color:#f92672">!</span>alloc <span style="color:#f92672">||</span> (pagetable <span style="color:#f92672">=</span> (<span style="color:#66d9ef">pde_t</span><span style="color:#f92672">*</span>)<span style="color:#a6e22e">kalloc</span>()) <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">memset</span>(pagetable, <span style="color:#ae81ff">0</span>, PGSIZE);
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">*</span>pte <span style="color:#f92672">=</span> <span style="color:#a6e22e">PA2PTE</span>(pagetable) <span style="color:#f92672">|</span> PTE_V;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span>pagetable[<span style="color:#a6e22e">PX</span>(<span style="color:#ae81ff">0</span>, va)];
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="内核页表">内核页表</h2>
+<p>下面这张图描述了内核页表中 va 与 pa 的映射关系。右半部分的物理地址是由硬件设计者决定的，具体内容会写在主板手册上；而左半部分是由操作系统设计者定义的，因为老师们想让 xv6 尽可能的简单易懂，所以这里的虚拟地址到物理地址的映射，大部分是相等的。</p>
+<p>地址 0x1000 是 boot ROM 的物理地址，当你对主板上电，主板做的第一件事情就是运行存储在 boot ROM 中的代码，当boot完成之后，会跳转到地址 0x80000000，操作系统需要确保那个地址有一些数据能够接着启动操作系统</p>
+<p><img alt="memory.png" src="/upload/memory.png"></p>
+<p>可以通过 vm.c 中的 kvminit 与 memlayout.h 以及 kernel.ld 看到内核页表的映射：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">// Make a direct-map page table for the kernel.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">pagetable_t</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">kvmmake</span>(<span style="color:#66d9ef">void</span>)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">pagetable_t</span> kpgtbl;
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    kpgtbl <span style="color:#f92672">=</span> (<span style="color:#66d9ef">pagetable_t</span>) <span style="color:#a6e22e">kalloc</span>();
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">memset</span>(kpgtbl, <span style="color:#ae81ff">0</span>, PGSIZE);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// uart registers
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">kvmmap</span>(kpgtbl, UART0, UART0, PGSIZE, PTE_R <span style="color:#f92672">|</span> PTE_W);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// virtio mmio disk interface
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">kvmmap</span>(kpgtbl, VIRTIO0, VIRTIO0, PGSIZE, PTE_R <span style="color:#f92672">|</span> PTE_W);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// PLIC
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">kvmmap</span>(kpgtbl, PLIC, PLIC, <span style="color:#ae81ff">0x400000</span>, PTE_R <span style="color:#f92672">|</span> PTE_W);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// map kernel text executable and read-only.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">kvmmap</span>(kpgtbl, KERNBASE, KERNBASE, (uint64)etext<span style="color:#f92672">-</span>KERNBASE, PTE_R <span style="color:#f92672">|</span> PTE_X);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// map kernel data and the physical RAM we&#39;ll make use of.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">kvmmap</span>(kpgtbl, (uint64)etext, (uint64)etext, PHYSTOP<span style="color:#f92672">-</span>(uint64)etext, PTE_R <span style="color:#f92672">|</span> PTE_W);
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// etext 指向 text 段的末尾，后面是 data 段，在 kernel.ld 定义
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// map the trampoline for trap entry/exit to
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// the highest virtual address in the kernel.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">kvmmap</span>(kpgtbl, TRAMPOLINE, (uint64)trampoline, PGSIZE, PTE_R <span style="color:#f92672">|</span> PTE_X);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// map kernel stacks
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">proc_mapstacks</span>(kpgtbl);
+</span></span><span style="display:flex;"><span>      
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> kpgtbl;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span> 
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Initialize the one kernel_pagetable
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">void</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">kvminit</span>(<span style="color:#66d9ef">void</span>)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    kernel_pagetable <span style="color:#f92672">=</span> <span style="color:#a6e22e">kvmmake</span>();
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>其中 TRAMPOLINE 被映射了两次，分别在与物理地址相等的虚拟地址，以及在 va 的最高处。这说明页表的映射不必要是一一对应，多对多也可以</p>
+<p>kernel stack 也会被映射两次，在 kvmmake 最后会调用 proc_mapstacks，那里又会将本映射在 kernel data 段的内核栈又映射到 va 的高处。但实际使用的是后者的映射，毕竟有保护页保护</p>
+<blockquote>
+<p>学生提问：对于不同的进程会有不同的kernel stack吗？</p>
+<p>Frans：答案是的。每一个用户进程都有一个对应的kernel stack</p>
+</blockquote>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">// Allocate a page for each process&#39;s kernel stack.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// Map it high in memory, followed by an invalid
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// guard page.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">void</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">proc_mapstacks</span>(<span style="color:#66d9ef">pagetable_t</span> kpgtbl) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>p;
+</span></span><span style="display:flex;"><span>      
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span>(p <span style="color:#f92672">=</span> proc; p <span style="color:#f92672">&lt;</span> <span style="color:#f92672">&amp;</span>proc[NPROC]; p<span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>pa <span style="color:#f92672">=</span> <span style="color:#a6e22e">kalloc</span>();
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span>(pa <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">panic</span>(<span style="color:#e6db74">&#34;kalloc&#34;</span>);
+</span></span><span style="display:flex;"><span>        uint64 va <span style="color:#f92672">=</span> <span style="color:#a6e22e">KSTACK</span>((<span style="color:#66d9ef">int</span>) (p <span style="color:#f92672">-</span> proc));
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">kvmmap</span>(kpgtbl, va, (uint64)pa, PGSIZE, PTE_R <span style="color:#f92672">|</span> PTE_W);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>其中 KSTACK 宏在 memlayout.h 定义</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">#define KSTACK(p) (TRAMPOLINE - (p)*2*PGSIZE - 3*PGSIZE)
+</span></span></span></code></pre></div><h2 id="用户页表">用户页表</h2>
+<p>用户页表的定义就简单很多，毕竟不需要考虑设备</p>
+<p><img alt="user pgtbl.png" src="/upload/user%20pgtbl.png"></p>
+<p>和内核页表的映射不一样的是，用户空间的代码是从地址 0 开始的，这在调试的时候可辅助确认是处于用户还是内核。</p>
+<p>trampoline 都映射到了虚拟地址的顶部，毕竟在异常处理时会从用户页表切换到内核页表，必须保证此段代码在二者中具有相同的 va，不然就乱套了</p>
+<p>trapframe 结构则放在了 trapoline 底下，详情请见 <a href="https://whalefall.site/archives/xv6-trap">xv6 实验日志 - Trap</a></p>
+<p>MAXVA 在 riscv.h 中定义，很显然，与虚拟地址有意义的位数相关</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">#define MAXVA (1L &lt;&lt; (9 + 9 + 9 + 12 - 1))
+</span></span></span></code></pre></div>]]></content>
+        </item>
+        
+        <item>
+            <title>xv6 实验日志 - Trap</title>
+            <link>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;trap/</link>
+            <pubDate>Wed, 14 Aug 2024 20:28:07 +0000</pubDate>
+            
+            <guid>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;trap/</guid>
+            <description>今天在看系统调用的时候发现自己把 xv6 的内存映射的约定给忘了。因为害怕后续做实验的时候会把前面花了不少时间才弄明白的机制遗忘，所以决定简单记录一下
+今天看的是陷阱，目前只讨论从用户态陷入内核态的流程。我对源代码进行了注释，但是放在了 pgtbl 分支下，不方便以后做实验看，便就贴在这了
+关于课程，有佬做了中文精翻：Trap 机制，阅读体验极佳
+0. 一些前置知识 STVEC（Supervisor Trap Vector Base Address Register）寄存器，它指向了内核中处理 trap 的指令的起始地址
+SEPC（Supervisor Exception Program Counter）寄存器，在trap的过程中保存程序计数器的值
+SSRATCH（Supervisor Scratch Register）寄存器，有点像临时寄存器
+SATP（Supervisor Address Translation and Protection）寄存器，它包含了指向page table的物理内存地址
+ecall 指令会做如下 3 件事：
+从 user mode 切到 supervisor mode
+将程序计数器的值保存在了 SEPC
+跳转到 STVEC 寄存器指向的指令
+sret 指令会做：
+程序会切换回 user mode
+SEPC 的值会被拷贝到 PC
+重新打开中断
+supervisor mode 并不那么特权，在这个模式下只能做两件事情：
+访问控制寄存器
+对 PTE_U = 0 的页进行操作（也就是说不能操作 PTE_U = 1 的页，不能直接访问物理地址）
+trampoline 在 用户空间与内核空间会被映射在相同的虚拟地址，说明书中给出的原因是：</description>
+            <content type="html"><![CDATA[<p>今天在看系统调用的时候发现自己把 xv6 的内存映射的约定给忘了。因为害怕后续做实验的时候会把前面花了不少时间才弄明白的机制遗忘，所以决定简单记录一下</p>
+<p>今天看的是陷阱，目前只讨论从用户态陷入内核态的流程。我对源代码进行了注释，但是放在了 pgtbl 分支下，不方便以后做实验看，便就贴在这了</p>
+<p>关于课程，有佬做了中文精翻：<a href="https://mit-public-courses-cn-translatio.gitbook.io/mit6-s081/lec06-isolation-and-system-call-entry-exit-robert/6.1-trap">Trap 机制</a>，阅读体验极佳</p>
+<h2 id="0-一些前置知识">0. 一些前置知识</h2>
+<p>STVEC（Supervisor Trap Vector Base Address Register）寄存器，它指向了内核中处理 trap 的指令的起始地址</p>
+<p>SEPC（Supervisor Exception Program Counter）寄存器，在trap的过程中保存程序计数器的值</p>
+<p>SSRATCH（Supervisor Scratch Register）寄存器，有点像临时寄存器</p>
+<p>SATP（Supervisor Address Translation and Protection）寄存器，它包含了指向page table的物理内存地址</p>
+<p>ecall 指令会做如下 3 件事：</p>
+<ol>
+<li>
+<p>从 user mode 切到 supervisor mode</p>
+</li>
+<li>
+<p>将程序计数器的值保存在了 SEPC</p>
+</li>
+<li>
+<p>跳转到 STVEC 寄存器指向的指令</p>
+</li>
+</ol>
+<p>sret 指令会做：</p>
+<ol>
+<li>
+<p>程序会切换回 user mode</p>
+</li>
+<li>
+<p>SEPC 的值会被拷贝到 PC</p>
+</li>
+<li>
+<p>重新打开中断</p>
+</li>
+</ol>
+<p>supervisor mode 并不那么特权，在这个模式下只能做两件事情：</p>
+<ol>
+<li>
+<p>访问控制寄存器</p>
+</li>
+<li>
+<p>对 PTE_U = 0 的页进行操作（也就是说不能操作 PTE_U = 1 的页，不能直接访问物理地址）</p>
+</li>
+</ol>
+<p>trampoline 在 用户空间与内核空间会被映射在相同的虚拟地址，说明书中给出的原因是：</p>
+<blockquote>
+<p>A major constraint on the design of xv6’s trap handling is the fact that the RISC-V hardware does not switch page tables when it forces a trap. This means that the trap handler address in stvec must have a valid mapping in the user page table, since that’s the page table in force when the trap handling code starts executing. Furthermore, xv6’s trap handling code needs to switch to the kernel page table; in order to be able to continue executing after that switch, the kernel page table must also have a mapping for the handler pointed to by stvec.</p>
+</blockquote>
+<h2 id="1-trap-流程">1. Trap 流程</h2>
+<ol>
+<li>
+<p>执行 ecall 后会跳转到 uservec (trampoline.S)</p>
+</li>
+<li>
+<p>uservec 转而执行 usertrap()，在其中根据 scause 调用 syscall (trap.c)</p>
+</li>
+<li>
+<p>在 usertrap() 的最后调用 usertrapret()</p>
+</li>
+<li>
+<p>最后进入 userret (trampoline.S)，执行 sret 后结束</p>
+</li>
+</ol>
+<p>在 <a href="https://pdos.csail.mit.edu/6.828/2020/xv6/book-riscv-rev1.pdf">xv6</a> 书中的第四章有更为详细的介绍</p>
+<h2 id="2-流程源代码与注释">2. 流程源代码与注释</h2>
+<p>另外，关于 trapframe 的结构请查看 proc.h 文件；有关访问控制寄存器的函数可在 riscv.h 中看到；有关内核页表以及用户页表的布局可以看 memlayout.h</p>
+<h3 id="uservec">uservec</h3>
+<p>vec 是 vector（中断向量）的缩写。*vec 指向了操作系统处理特定中断事件时所应该执行的代码的内存地址，故用 vec 命名。</p>
+<pre><code>.globl trampoline
+trampoline:
+.align 4
+.globl uservec
+uservec:    
+	#
+        # trap.c sets stvec to point here, so
+        # traps from user space start here,
+        # in supervisor mode, but with a
+        # user page table.
+        #
+        # sscratch points to where the process's p-&gt;trapframe is
+        # mapped into user space, at TRAPFRAME.
+        #
+        
+	# swap a0 and sscratch
+        # so that a0 is TRAPFRAME
+        csrrw a0, sscratch, a0
+        # 交换 a0 与 sscratch 的值
+
+        # save the user registers in TRAPFRAME
+        sd ra, 40(a0)
+        sd sp, 48(a0)
+        sd gp, 56(a0)
+        sd tp, 64(a0)
+        sd t0, 72(a0)
+        sd t1, 80(a0)
+        sd t2, 88(a0)
+        sd s0, 96(a0)
+        sd s1, 104(a0)
+        sd a1, 120(a0)
+        sd a2, 128(a0)
+        sd a3, 136(a0)
+        sd a4, 144(a0)
+        sd a5, 152(a0)
+        sd a6, 160(a0)
+        sd a7, 168(a0)
+        sd s2, 176(a0)
+        sd s3, 184(a0)
+        sd s4, 192(a0)
+        sd s5, 200(a0)
+        sd s6, 208(a0)
+        sd s7, 216(a0)
+        sd s8, 224(a0)
+        sd s9, 232(a0)
+        sd s10, 240(a0)
+        sd s11, 248(a0)
+        sd t3, 256(a0)
+        sd t4, 264(a0)
+        sd t5, 272(a0)
+        sd t6, 280(a0)
+
+	# save the user a0 in p-&gt;trapframe-&gt;a0
+        csrr t0, sscratch
+        sd t0, 112(a0)
+        # 将 SSRATCH 的值复制到 t0 中，再将 t0 存 p-&gt;trapframe-&gt;a0
+        # trapframe 的 a0 存的便是原来的 a0
+
+        # restore kernel stack pointer from p-&gt;trapframe-&gt;kernel_sp
+        ld sp, 8(a0)
+        # trapframe 的 kernel_sp 复制到当前 sp，切到内核栈
+
+        # make tp hold the current hartid, from p-&gt;trapframe-&gt;kernel_hartid
+        ld tp, 32(a0)
+
+        # load the address of usertrap(), p-&gt;trapframe-&gt;kernel_trap
+        ld t0, 16(a0)
+        # 后面会跳转到 t0 的地址，即 usertrap() 函数
+
+        # restore kernel page table from p-&gt;trapframe-&gt;kernel_satp
+        ld t1, 0(a0)
+        csrw satp, t1
+        sfence.vma zero, zero
+        # 将 trapframe 的内核页表地址复制到 t1
+        # 将 stap 设置为 t1，及从用户页表切换成了内核页表
+        # 地址转换是由硬件完成的，为了保证 trampoline.S 的代码还能
+        # 顺利执行，内核页表与用户页表需保证对这段代码有相同的映射
+
+        # a0 is no longer valid, since the kernel page
+        # table does not specially map p-&gt;tf.
+        # 在用户页表中 trapframe 被映射到 trampoline 下方
+        # 但内核页表中没这个规定
+        # 也就是说，a0 中所存的用户空间的 trapframe 地址
+        # 在切换成内核页表后就没用了
+
+        # jump to usertrap(), which does not return
+        jr t0
+</code></pre>
+<h3 id="usertrap">usertrap</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#66d9ef">void</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">usertrap</span>(<span style="color:#66d9ef">void</span>)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> which_dev <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// r_sstatus 返回 sstatus 的值，见 riscv.h
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">if</span>((<span style="color:#a6e22e">r_sstatus</span>() <span style="color:#f92672">&amp;</span> SSTATUS_SPP) <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">panic</span>(<span style="color:#e6db74">&#34;usertrap: not from user mode&#34;</span>);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// send interrupts and exceptions to kerneltrap(),
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// since we&#39;re now in the kernel.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">w_stvec</span>((uint64)kernelvec);
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 后续系统调用之类的操作也会触发异常
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// 所以要更改异常处理函数
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>     
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>p <span style="color:#f92672">=</span> <span style="color:#a6e22e">myproc</span>();
+</span></span><span style="display:flex;"><span>      
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// save user program counter.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    p<span style="color:#f92672">-&gt;</span>trapframe<span style="color:#f92672">-&gt;</span>epc <span style="color:#f92672">=</span> <span style="color:#a6e22e">r_sepc</span>();
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ecall 指令做了 3 件事:
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// 1. user mode -&gt; supervisor mode
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// 2. 将 ecall 指令所处地址保存到 sepc
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// 3. 跳转到 stvec 所指位置，及 uservec
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// 所以，这里是将当前进程的 trapframe 的 epc 设置为返回地址 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>      
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span>(<span style="color:#a6e22e">r_scause</span>() <span style="color:#f92672">==</span> <span style="color:#ae81ff">8</span>){
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// system call
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span>(p<span style="color:#f92672">-&gt;</span>killed)
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">exit</span>(<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// sepc points to the ecall instruction,
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#75715e">// but we want to return to the next instruction.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        p<span style="color:#f92672">-&gt;</span>trapframe<span style="color:#f92672">-&gt;</span>epc <span style="color:#f92672">+=</span> <span style="color:#ae81ff">4</span>;
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// an interrupt will change sstatus &amp;c registers,
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#75715e">// so don&#39;t enable until done with those registers.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#a6e22e">intr_on</span>();
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">syscall</span>();
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// syscall() 的返回值会存储在 trapframe 的 a0 中
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    } <span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span>((which_dev <span style="color:#f92672">=</span> <span style="color:#a6e22e">devintr</span>()) <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>){
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// ok
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    } <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;usertrap(): unexpected scause %p pid=%d</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, <span style="color:#a6e22e">r_scause</span>(), p<span style="color:#f92672">-&gt;</span>pid);
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;            sepc=%p stval=%p</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, <span style="color:#a6e22e">r_sepc</span>(), <span style="color:#a6e22e">r_stval</span>());
+</span></span><span style="display:flex;"><span>        p<span style="color:#f92672">-&gt;</span>killed <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>      }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">if</span>(p<span style="color:#f92672">-&gt;</span>killed)
+</span></span><span style="display:flex;"><span>          <span style="color:#a6e22e">exit</span>(<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>      <span style="color:#75715e">// give up the CPU if this is a timer interrupt.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>      <span style="color:#66d9ef">if</span>(which_dev <span style="color:#f92672">==</span> <span style="color:#ae81ff">2</span>)
+</span></span><span style="display:flex;"><span>          <span style="color:#a6e22e">yield</span>();
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>      <span style="color:#a6e22e">usertrapret</span>();
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="usertrapret">usertrapret</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#66d9ef">void</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">usertrapret</span>(<span style="color:#66d9ef">void</span>)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>p <span style="color:#f92672">=</span> <span style="color:#a6e22e">myproc</span>();
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// we&#39;re about to switch the destination of traps from
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// kerneltrap() to usertrap(), so turn off interrupts until
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// we&#39;re back in user space, where usertrap() is correct.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">intr_off</span>();
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// send syscalls, interrupts, and exceptions to trampoline.S
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">w_stvec</span>(TRAMPOLINE <span style="color:#f92672">+</span> (uservec <span style="color:#f92672">-</span> trampoline));
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// set up trapframe values that uservec will need when
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// the process next re-enters the kernel.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    p<span style="color:#f92672">-&gt;</span>trapframe<span style="color:#f92672">-&gt;</span>kernel_satp <span style="color:#f92672">=</span> <span style="color:#a6e22e">r_satp</span>();         <span style="color:#75715e">// kernel page table
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    p<span style="color:#f92672">-&gt;</span>trapframe<span style="color:#f92672">-&gt;</span>kernel_sp <span style="color:#f92672">=</span> p<span style="color:#f92672">-&gt;</span>kstack <span style="color:#f92672">+</span> PGSIZE; <span style="color:#75715e">// process&#39;s kernel stack
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    p<span style="color:#f92672">-&gt;</span>trapframe<span style="color:#f92672">-&gt;</span>kernel_trap <span style="color:#f92672">=</span> (uint64)usertrap;
+</span></span><span style="display:flex;"><span>    p<span style="color:#f92672">-&gt;</span>trapframe<span style="color:#f92672">-&gt;</span>kernel_hartid <span style="color:#f92672">=</span> <span style="color:#a6e22e">r_tp</span>();         <span style="color:#75715e">// hartid for cpuid()
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// set up the registers that trampoline.S&#39;s sret will use
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>      <span style="color:#75715e">// to get to user space.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>      
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// set S Previous Privilege mode to User.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">long</span> x <span style="color:#f92672">=</span> <span style="color:#a6e22e">r_sstatus</span>();
+</span></span><span style="display:flex;"><span>    x <span style="color:#f92672">&amp;=</span> <span style="color:#f92672">~</span>SSTATUS_SPP; <span style="color:#75715e">// clear SPP to 0 for user mode
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    x <span style="color:#f92672">|=</span> SSTATUS_SPIE; <span style="color:#75715e">// enable interrupts in user mode
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">w_sstatus</span>(x);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// set S Exception Program Counter to the saved user pc.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">w_sepc</span>(p<span style="color:#f92672">-&gt;</span>trapframe<span style="color:#f92672">-&gt;</span>epc);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// tell trampoline.S the user page table to switch to.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    uint64 satp <span style="color:#f92672">=</span> <span style="color:#a6e22e">MAKE_SATP</span>(p<span style="color:#f92672">-&gt;</span>pagetable);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// jump to trampoline.S at the top of memory, which 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// switches to the user page table, restores user registers,
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// and switches to user mode with sret.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    uint64 fn <span style="color:#f92672">=</span> TRAMPOLINE <span style="color:#f92672">+</span> (userret <span style="color:#f92672">-</span> trampoline);
+</span></span><span style="display:flex;"><span>      ((<span style="color:#66d9ef">void</span> (<span style="color:#f92672">*</span>)(uint64,uint64))fn)(TRAPFRAME, satp);
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="userret">userret</h3>
+<pre tabindex="0"><code class="language-Risc-V" data-lang="Risc-V">    .globl userret
+    userret:
+            # userret(TRAPFRAME, pagetable)
+            # switch from kernel to user.
+            # usertrapret() calls here.
+            # a0: TRAPFRAME, in user page table.
+            # a1: user page table, for satp.
+    
+            # switch to the user page table.
+            csrw satp, a1
+            sfence.vma zero, zero
+    
+            # put the saved user a0 in sscratch, so we
+            # can swap it with our a0 (TRAPFRAME) in the last step.
+            ld t0, 112(a0)
+            csrw sscratch, t0
+    
+            # restore all but a0 from TRAPFRAME
+            ld ra, 40(a0)
+            ld sp, 48(a0)
+            ld gp, 56(a0)
+            ld tp, 64(a0)
+            ld t0, 72(a0)
+            ld t1, 80(a0)
+            ld t2, 88(a0)
+            ld s0, 96(a0)
+            ld s1, 104(a0)
+            ld a1, 120(a0)
+            ld a2, 128(a0)
+            ld a3, 136(a0)
+            ld a4, 144(a0)
+            ld a5, 152(a0)
+            ld a6, 160(a0)
+            ld a7, 168(a0)
+            ld s2, 176(a0)
+            ld s3, 184(a0)
+            ld s4, 192(a0)
+            ld s5, 200(a0)
+            ld s6, 208(a0)
+            ld s7, 216(a0)
+            ld s8, 224(a0)
+            ld s9, 232(a0)
+            ld s10, 240(a0)
+            ld s11, 248(a0)
+            ld t3, 256(a0)
+            ld t4, 264(a0)
+            ld t5, 272(a0)
+            ld t6, 280(a0)
+    
+    	# restore user a0, and save TRAPFRAME in sscratch
+            csrrw a0, sscratch, a0
+    	# 先将 trapframe 的 a0 保存到 sscratch 中
+    	# 待 a0 寄存器写入后（此时存储的是第一个参数，即 trapframe 的地址）
+    	# 交换二者的值，这样保证 sscratch 里存储了 trapframe
+            
+            # return to user mode and user pc.
+            # usertrapret() set up sstatus and sepc.
+            sret
+</code></pre>]]></content>
+        </item>
+        
+        <item>
+            <title>CS61B 学习笔记 - Quicksort</title>
+            <link>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;quicksort/</link>
+            <pubDate>Tue, 30 Jul 2024 17:57:06 +0000</pubDate>
+            
+            <guid>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;quicksort/</guid>
+            <description>多年以后，在面对图灵奖时，Tony Hoare 仍会记得一个新手程序员尝试对单词列表进行排序的那个下午（）
+另外，这节课的讲师换人了，是他的 secret ruler twin brother
+Quicksort 快速排序的想法其实非常简单：选择，分区，然后递归
+选择一个元素作为 pivot，一般选择最左边第一个元素
+小于等于 pivot 的放在 pivot 的左边，大于 pivot 的放在 pivot 的右边，这样一来 pivot 的位置就确定了
+递归地对 pivot 的左边 Quicksort
+递归地对 pivot 的右边 Quicksort
+快速排序的演示链接在这里
+Tony Hoare 将其命名为 Quicksort，而且直到现在，在大多数情况下，快速排序仍然是最快的算法
+快速排序的最佳运行时间是 Θ(NlogN)。分区用时 Θ(N)，有 Θ(logN) 层
+但是排序一个已经排好的数列，就会触发最坏运行时间 Θ(N2)
+但是现实中除非故意为之，几乎不可能遇到这种情况：第一次选择 pivot 便是数组中的最大/最小值概论较小，但并非不可能，不过连续几十次几千次都是如此就几乎不可能出现了。因此，快速排序的时间复杂度往往是 Θ(NlogN)，且一般在 ~2N lnN 次比较后可以完成
+下面这张图是对 N = 1000 的数组进行快速排序所需操作次数的分布情况。至于 Θ(N2)，106 都不在图上
+虽然快速排序与归并排序都是 O(NlogN)，但是快速排序往往比归并排序要快。（这可能是由于缓存，页命中等更加底层的东西决定的，没有细讲）
+Quicksort Flavors 我们怎么做才能避免快速排序的最坏情况呢？那么就让我们来”定制化“一个快速排序吧，从 pivot 选择算法，Partition 算法，到 预处理算法，都有改进地空间。一下是一些改进的思路：
+Philosophy 1: Randomness 最坏情况运行时的一些可能原因包括：</description>
+            <content type="html"><![CDATA[<p>多年以后，在面对图灵奖时，Tony Hoare 仍会记得一个新手程序员尝试对单词列表进行排序的那个下午（）</p>
+<p>另外，这节课的讲师换人了，是他的 secret ruler twin brother</p>
+<h2 id="quicksort">Quicksort</h2>
+<p>快速排序的想法其实非常简单：选择，分区，然后递归</p>
+<ol>
+<li>
+<p>选择一个元素作为 pivot，一般选择最左边第一个元素</p>
+</li>
+<li>
+<p>小于等于 pivot 的放在 pivot 的左边，大于 pivot 的放在 pivot 的右边，这样一来 pivot 的位置就确定了</p>
+</li>
+<li>
+<p>递归地对 pivot 的左边 Quicksort</p>
+</li>
+<li>
+<p>递归地对 pivot 的右边 Quicksort</p>
+</li>
+</ol>
+<p>快速排序的演示链接在<a href="https://docs.qq.com/slide/DR3pIaVlZcGtGaWFr">这里</a></p>
+<p>Tony Hoare 将其命名为 Quicksort，而且直到现在，在大多数情况下，快速排序仍然是最快的算法</p>
+<p>快速排序的最佳运行时间是 Θ(NlogN)。分区用时 Θ(N)，有 Θ(logN) 层</p>
+<p><img alt="qs best.png" src="/upload/qs%20best.png"></p>
+<p>但是排序一个已经排好的数列，就会触发最坏运行时间 Θ(N2)</p>
+<p>但是现实中除非故意为之，几乎不可能遇到这种情况：第一次选择 pivot 便是数组中的最大/最小值概论较小，但并非不可能，不过连续几十次几千次都是如此就几乎不可能出现了。因此，快速排序的时间复杂度往往是 Θ(NlogN)，且一般在 ~2N lnN 次比较后可以完成</p>
+<p>下面这张图是对 N = 1000 的数组进行快速排序所需操作次数的分布情况。至于 Θ(N2)，106 都不在图上</p>
+<p><img alt="gs count.png" src="/upload/gs%20count.png"></p>
+<p>虽然快速排序与归并排序都是 O(NlogN)，但是快速排序往往比归并排序要快。（这可能是由于缓存，页命中等更加底层的东西决定的，没有细讲）</p>
+<h2 id="quicksort-flavors">Quicksort Flavors</h2>
+<p>我们怎么做才能避免快速排序的最坏情况呢？那么就让我们来”定制化“一个快速排序吧，从 pivot 选择算法，Partition 算法，到 预处理算法，都有改进地空间。一下是一些改进的思路：</p>
+<h3 id="philosophy-1-randomness">Philosophy 1: Randomness</h3>
+<p>最坏情况运行时的一些可能原因包括：</p>
+<ol>
+<li>
+<p>数组已经排序</p>
+</li>
+<li>
+<p>数组有大量重复的元素（甚至全部一样）</p>
+</li>
+</ol>
+<p>对应的方法是：</p>
+<ol>
+<li>
+<p>随机选择 pivot</p>
+</li>
+<li>
+<p>在排序之前提前打乱 items（Shuffle items before sort）</p>
+</li>
+</ol>
+<h3 id="philosophy-2-smarter-pivot-selection">Philosophy 2: Smarter Pivot Selection</h3>
+<ol>
+<li>
+<p>我们可以先抽几个 items，然后从 items 中取一个最合适的作为 pivot（但是仍然防不住有人恶意攻击）</p>
+</li>
+<li>
+<p>有一种算法可以在 Θ(N) 时间找出中位数，这样就不会有上面的漏洞了。但虽然时间仍是 Θ(NlogN)，却比归并排序慢了</p>
+</li>
+</ol>
+<h3 id="philosophy-3-introspection">Philosophy 3: Introspection</h3>
+<p>我们可以设置这样一个机制：当察觉时间不对劲时，我们切换成归并排序</p>
+<blockquote>
+<p>Although this is a reasonable approach, it is not common to use in practice.</p>
+</blockquote>
+<h2 id="tony-hoares-partioning">Tony Hoare&rsquo;s Partioning</h2>
+<p>想想一下有两个指针，一个在数组的开头，一个在数组的末尾</p>
+<p>在开头的指针，也就是左边的指针，喜欢比 pivot 更小的 item</p>
+<p>在结尾的指针，也就是右边的指针，喜欢比 pivot 更大的 item</p>
+<p>好，现在他们相对走去，如果遇到了不喜欢的 item，那就停下。如果两个指针都停下了，那就交换二者指向的元素，继续走</p>
+<p>就这么一直重复，直到二者相遇</p>
+<p><a href="https://docs.qq.com/slide/DR1dERlNUcE9WU2FC">这里</a>是关于这个算法的演示</p>
+<p>我们可以看到，使用这种方法后有明显的优化</p>
+<p><img alt="qsccompare.avif" src="/upload/qsccompare.avif"></p>
+<h2 id="quick-select">Quick Select</h2>
+<p>我们也可以利用这种想法快速查找中位数：</p>
+<ol>
+<li>
+<p>初始化数组，将最左边的项目作为 pivot</p>
+<p><img alt="qs select1.png" src="/upload/qs%20select1.png"></p>
+</li>
+<li>
+<p>分区</p>
+<p><img alt="qs select2.png" src="/upload/qs%20select2.png"></p>
+</li>
+<li>
+<p>重复此过程</p>
+<p>9 处在中位之左，故 9 即其左边都舍弃不看</p>
+<p><img alt="qs select3.png" src="/upload/qs%20select3.png"></p>
+</li>
+<li>
+<p>直到 pivot 处于数组中间停止</p>
+<p><img alt="qs select4.png" src="/upload/qs%20select4.png"></p>
+</li>
+</ol>
+<p>运行时间：N + N / 2 + N / 4 + &hellip;&hellip; + 1 = Θ(N)</p>
+]]></content>
+        </item>
+        
+        <item>
+            <title>CS61B 学习笔记 - Basic Sort</title>
+            <link>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;basic&#43;sort/</link>
+            <pubDate>Tue, 30 Jul 2024 16:03:25 +0000</pubDate>
+            
+            <guid>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;basic&#43;sort/</guid>
+            <description>In-place Insertion Sort 我们从数组的左边开始，每次选择一个元素进行交换。然后，我们将这个元素交换到它尽可能靠前的位置。数组的前端逐渐变得有序，直到整个数组都被排序。
+在逆序数量较少的数组中，插入排序可能是最快的算法。另外，一个不太明显的经验是，插入排序在小数组（小于 15）上非常快，比快速排序与归并排序还快
+Selection Sort 选择排序使用以下算法：找到最小的项。把这一项放到前面。重复直到所有项目都固定
+在数组中 Θ(N2) 的复杂度真有人会用吗&amp;hellip;&amp;hellip;
+Heapsort Naive Heapsort 我们可以另起一个堆，将所有的元素放入到这个堆中，再一个一个把最大值取出来
+整体的运行时间是 Θ(NlogN)，毕竟无论是插入元素还是去除最小值都是 O(logN)
+但是，为了另起一堆，我们又多花了 Θ(N) 的空间
+In-place Heapsort 最大堆删除最大元素时，是将根元素与数组最末尾交换，然后sink(1) 并设置最末尾为 null
+而我们完全可以将这最末位的空间利用起来，不通过设置 null 的方式删除原来堆中的最大值，而是就这样将其存在末尾（这也是为什么使用最大而不是最小堆）
+我们最开始只要将数组“堆化”，然后以上述方法不断将最大值放在堆的最后，最终我们便得到一个排序好的数组
+你可以在这里看到这个算法的演示
+Merge Sort 有两个排序好的数组，如何将其合成一个排序好的数组：答案很简单，遍历两个数组，取二者最小，时间复杂度为两数组长度之和
+要排序长度为 N 的数组，我们可以将其分成两个长度为 N / 2 的数组并对二者归并排序。N / 2 的数组又可以分成两个 N / 4 的数组，N / 4 又可以分成两个 N / 8&amp;hellip;&amp;hellip; 直到分成两个长度为 1 的数组
+这样我们可以得到一颗高度为 Θ(logN) 的树，树的每一层都要进行 Θ(N) 次操作，时间复杂度为 O(NlogN)</description>
+            <content type="html"><![CDATA[<h2 id="in-place-insertion-sort">In-place Insertion Sort</h2>
+<p>我们从数组的左边开始，每次选择一个元素进行交换。然后，我们将这个元素交换到它尽可能靠前的位置。数组的前端逐渐变得有序，直到整个数组都被排序。</p>
+<p><img alt="insert sort.png" src="/upload/insert%20sort.png"></p>
+<p>在逆序数量较少的数组中，插入排序可能是最快的算法。另外，一个不太明显的经验是，插入排序在小数组（小于 15）上非常快，比快速排序与归并排序还快</p>
+<h2 id="selection-sort">Selection Sort</h2>
+<p>选择排序使用以下算法：找到最小的项。把这一项放到前面。重复直到所有项目都固定</p>
+<p>在数组中 Θ(N2) 的复杂度真有人会用吗&hellip;&hellip;</p>
+<h2 id="heapsort">Heapsort</h2>
+<h3 id="naive-heapsort">Naive Heapsort</h3>
+<p>我们可以另起一个<a href="https://whalefall.site/archives/cs61b-MinPQ">堆</a>，将所有的元素放入到这个堆中，再一个一个把最大值取出来</p>
+<p>整体的运行时间是 Θ(NlogN)，毕竟无论是插入元素还是去除最小值都是 O(logN)</p>
+<p>但是，为了另起一堆，我们又多花了 Θ(N) 的空间</p>
+<h3 id="in-place-heapsort">In-place Heapsort</h3>
+<p>最大堆删除最大元素时，是将根元素与数组最末尾交换，然后<code>sink(1)</code> 并设置最末尾为 null</p>
+<p>而我们完全可以将这最末位的空间利用起来，不通过设置 null 的方式删除原来堆中的最大值，而是就这样将其存在末尾（这也是为什么使用最大而不是最小堆）</p>
+<p>我们最开始只要将数组“堆化”，然后以上述方法不断将最大值放在堆的最后，最终我们便得到一个排序好的数组</p>
+<p>你可以在<a href="https://docs.qq.com/slide/DR01makx4aVBQTlpC">这里</a>看到这个算法的演示</p>
+<h2 id="merge-sort">Merge Sort</h2>
+<p>有两个排序好的数组，如何将其合成一个排序好的数组：答案很简单，遍历两个数组，取二者最小，时间复杂度为两数组长度之和</p>
+<p><img alt="freecompress-merge sort.png" src="/upload/freecompress-merge%20sort.png"></p>
+<p>要排序长度为 N 的数组，我们可以将其分成两个长度为 N / 2 的数组并对二者归并排序。N / 2 的数组又可以分成两个 N / 4 的数组，N / 4 又可以分成两个 N / 8&hellip;&hellip; 直到分成两个长度为 1 的数组</p>
+<p><img alt="freecompress-merge sort layer.png" src="/upload/freecompress-merge%20sort%20layer.png"></p>
+<p>这样我们可以得到一颗高度为 Θ(logN) 的树，树的每一层都要进行 Θ(N) 次操作，时间复杂度为 O(NlogN)</p>
+]]></content>
+        </item>
+        
+        <item>
+            <title>CS61B 学习笔记 - MST</title>
+            <link>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;mst/</link>
+            <pubDate>Tue, 30 Jul 2024 14:57:27 +0000</pubDate>
+            
+            <guid>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;mst/</guid>
+            <description>1. Minimum Spanning Trees A minimum spanning tree (MST) is the lightest set of edges in a graph possible such that all the vertices are connected. Because it is a tree, it must be connected and acyclic. And it is called &amp;ldquo;spanning&amp;rdquo; since all vertices are included.
+最小生成树：连接图中所有节点，并使得连接的边和最小的树。
+2. Cut Property 我们将一张图随便分为两个部分，一部分标为灰色，另一部分标为白色。
+这张图里面一定存在一个最小生成树，这棵树将所有的灰球连接起来，同时将所有的白球连接起来，并且在灰色部分与白色部分的“桥梁”（那些一端是灰球，一端是白球的边）之中，一定有一个“桥梁”属于最小生成树。且这个“桥梁”一定是所有“桥梁”之中，最短的那一条。
+这就是所谓的 cut property
+We can define a cut as an assignment of a graph’s nodes to two non-empty sets (i.</description>
+            <content type="html"><![CDATA[<h2 id="1-minimum-spanning-trees">1. Minimum Spanning Trees</h2>
+<blockquote>
+<p>A minimum spanning tree (MST) is the lightest set of edges in a graph possible such that all the vertices are connected. Because it is a tree, it must be connected and acyclic. And it is called &ldquo;spanning&rdquo; since all vertices are included.</p>
+</blockquote>
+<p>最小生成树：连接图中所有节点，并使得连接的边和最小的树。</p>
+<h2 id="2-cut-property">2. Cut Property</h2>
+<p>我们将一张图随便分为两个部分，一部分标为灰色，另一部分标为白色。</p>
+<p>这张图里面一定存在一个最小生成树，这棵树将所有的灰球连接起来，同时将所有的白球连接起来，并且在灰色部分与白色部分的“桥梁”（那些一端是灰球，一端是白球的边）之中，一定有一个“桥梁”属于最小生成树。且这个“桥梁”一定是所有“桥梁”之中，最短的那一条。</p>
+<p>这就是所谓的 cut property</p>
+<p><img alt="freecompress-cut property.png" src="/upload/freecompress-cut%20property.png"></p>
+<blockquote>
+<p>We can define a cut as an assignment of a graph’s nodes to two non-empty sets (i.e. we assign every node to either set number one or set number two).</p>
+<p>We can define a crossing edge as an edge which connects a node from one set to a node from the other set.</p>
+<p>With these two definitions, we can understand the Cut Property; given any cut, the minimum weight crossing edge is in the MST.</p>
+</blockquote>
+<h2 id="3-prims-algorithm">3. Prim&rsquo;s Algorithm</h2>
+<p>根据 cut property，我们可以很容易想到一种找到 MST 的方法：</p>
+<p>当我们选取了起始节点时，我们相当于图分成了两部分：起始节点与其他节点，然后我们连接最短的“桥梁”，这张图又形成了两部分：已经包含 2 个节点的树与其他节点，再利用 cut property，又是两个部分&hellip;&hellip;这样不断重复使用 cut property，我们就能找到 MST</p>
+<p>但是这个算法有两个问题：第一个问题是我们很可能会遇到连接成环的现象；第二个问题是我们每次连接都要检查其他所有其他的边，速度慢了</p>
+<p>防止环的形成方法非常简单：利用 <a href="https://whalefall.site/archives/cs61b-DisjointSets">Disjoint Sets</a>。当我们连接节点 A, B 时，我们将 A, B 放在同一个集合。再连接 B, C 时，我们调用<code>connect(B, C)</code>，这样 A, B, C 就处在同一个集合。我们虽然没有直接连接 A, C，但是二者既然在同一集合中，说明必有一条从 A 到 C 的路径。假如我们尝试连接 A, C，然后发现 A, C 本来就在同一个集合中，便可知道会形成环进而取消操作。</p>
+<p>关于第二个问题，这里有一个非常类似于 Dijkstra 的 <a href="https://docs.qq.com/slide/DR3NrUkxmTFBhVXBB">Optimized Prim&rsquo;s Algorithm 演示</a></p>
+<h2 id="4-kruskals-algorithm">4. Kruskal&rsquo;s Algorithm</h2>
+<p>另一个寻找图的 MST 的算法是 Kruskal 算法。Kruskal 算法不是像 Prim 算法那样通过遍历节点来构造 MST，而是通过遍历边来找到 MST 算法如下：</p>
+<ol>
+<li>
+<p>将所有边按权重由小到大排序</p>
+</li>
+<li>
+<p>在保证不会形成环的前提下，按排好的顺序将边加入到正在构建的 MST 中</p>
+</li>
+<li>
+<p>重复第 2 步，直到 MST 有 V - 1 条边（节点数 - 1）</p>
+</li>
+</ol>
+<p>这个算法实质上也利用了 cut property，实质上和 Prim 一样。实践中选择任意一种即可</p>
+]]></content>
+        </item>
+        
+        <item>
+            <title>CS61B 学习笔记 - Shortest Paths</title>
+            <link>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;shortest&#43;paths/</link>
+            <pubDate>Tue, 30 Jul 2024 12:30:43 +0000</pubDate>
+            
+            <guid>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;shortest&#43;paths/</guid>
+            <description>Dijkstra&amp;rsquo;s Algorithm 还是贴伪代码
+def dijkstras(source): # 初始化最小优先队列，存储节点与该节点到起点的最短距离 # 设置起点距离为 0，其他节点距离无限 PQ.add(source, 0) For all other vertices, v, PQ.add(v, infinity) while PQ is not empty: # 出队剩余未操作节点中距离最短的节点 p = PQ.removeSmallest() relax(all edges from p) def relax(edge p,q): if q is visited (i.e., q is not in PQ): return # 若是新路径的距离更短，更新 if distTo[p] + weight(edge) &amp;lt; distTo[q]: distTo[q] = distTo[p] + w edgeTo[q] = p PQ.changePriority(q, distTo[q]) 在图中存在负边的情况下，Dijkstra 算法不能保证正确。这可能有用……但这并不能保证有效。
+A* Dijkstra 算法其实像是以起点为中心，向四面八方进行地毯式搜索。但假如我只是搜索武汉到北京的最短路径，我有必要搜索到西藏地区吗？</description>
+            <content type="html"><![CDATA[<h2 id="dijkstras-algorithm">Dijkstra&rsquo;s Algorithm</h2>
+<p>还是贴伪代码</p>
+<pre><code>def dijkstras(source):
+    # 初始化最小优先队列，存储节点与该节点到起点的最短距离
+    # 设置起点距离为 0，其他节点距离无限
+    PQ.add(source, 0) 
+    For all other vertices, v, PQ.add(v, infinity)
+    while PQ is not empty:
+        # 出队剩余未操作节点中距离最短的节点
+        p = PQ.removeSmallest()
+        relax(all edges from p)
+
+def relax(edge p,q):
+   if q is visited (i.e., q is not in PQ):
+       return
+    
+   # 若是新路径的距离更短，更新
+   if distTo[p] + weight(edge) &lt; distTo[q]:
+       distTo[q] = distTo[p] + w
+       edgeTo[q] = p
+       PQ.changePriority(q, distTo[q])
+</code></pre>
+<p>在图中存在负边的情况下，Dijkstra 算法不能保证正确。这可能有用……但这并不能保证有效。</p>
+<h2 id="a">A*</h2>
+<p>Dijkstra 算法其实像是以起点为中心，向四面八方进行地毯式搜索。但假如我只是搜索武汉到北京的最短路径，我有必要搜索到西藏地区吗？</p>
+<p>当然不会，因为我们知道我们应该向北搜索，而不是转向西南方向。为什么？因为武汉以北的城市会距离北京越来越近，而西南方向的城市会越来越远。</p>
+<p>让我们稍微修改一下Dijkstra算法。在Dijkstra的算法中，我们使用 bestKnownDistToV 作为算法中的优先级（也就是说，PQ 选择最小节点的标准是选择已知距离出发点最近的节点）。这一次，我们将使用 bestKnownDistToV + estimateFromVToGoal 作为我们的启发式，换言之，我们先对路上的所有城市到目标的距离经行一个估计，然后以<strong>节点到出发点的距离 + 节点到目标距离的估计值</strong>作为选择标准。</p>
+<p>可以通过<a href="https://docs.qq.com/slide/DR0dQRXpPeE5vbm9k">这个幻灯片</a>查看 A* 的运行，注意下方 Fringe 的动态，h(v, goal) 是 estimateFromVToGoal</p>
+<p>我们的启发式<code>heuristic(v, target)</code>必须满足两个条件：</p>
+<ol>
+<li>
+<p><code>heuristic(v, target)</code> 必须小于等于 v 到 target 的真实距离</p>
+</li>
+<li>
+<p>对于 v 的每个邻居 w:</p>
+<pre><code>heuristic(v, target) &lt;= dist(v, w) + heuristic(w, target)
+</code></pre>
+<p>我们姑且把<code>heuristic(v, target)</code>认为是 v 到 target 的估计距离吧，上面这句话的意思便是，<strong>v到target的估计距离 不得大于 v到w的距离 与 w到target的估计距离 之和</strong></p>
+</li>
+</ol>
+]]></content>
+        </item>
+        
+        <item>
+            <title>CS61B 学习笔记 - Heap &amp; MinPQ</title>
+            <link>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;heap&#43;&#43;minpq/</link>
+            <pubDate>Tue, 30 Jul 2024 10:08:41 +0000</pubDate>
+            
+            <guid>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;heap&#43;&#43;minpq/</guid>
+            <description>1. Interface 以下是最小优先队列所需实现的方法。在这个数据结构中，我们只关心其最小值。
+/** (Min) Priority Queue: Allowing tracking and removal of * the smallest item in a priority queue. */ public interface MinPQ&amp;lt;Item&amp;gt; { /** Adds the item to the priority queue. */ public void add(Item x); /** Returns the smallest item in the priority queue. */ public Item getSmallest(); /** Removes the smallest item from the priority queue. */ public Item removeSmallest(); /** Returns the size of the priority queue.</description>
+            <content type="html"><![CDATA[<h2 id="1-interface">1. Interface</h2>
+<p>以下是最小优先队列所需实现的方法。在这个数据结构中，我们只关心其最小值。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#75715e">/** (Min) Priority Queue: Allowing tracking and removal of 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">  * the smallest item in a priority queue. */</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">interface</span> <span style="color:#a6e22e">MinPQ</span><span style="color:#f92672">&lt;</span>Item<span style="color:#f92672">&gt;</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">/** Adds the item to the priority queue. */</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">add</span>(Item x);
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">/** Returns the smallest item in the priority queue. */</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">public</span> Item <span style="color:#a6e22e">getSmallest</span>();
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">/** Removes the smallest item from the priority queue. */</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">public</span> Item <span style="color:#a6e22e">removeSmallest</span>();
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">/** Returns the size of the priority queue. */</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">int</span> <span style="color:#a6e22e">size</span>();
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="2-minpq">2. MinPQ</h2>
+<p>我们使用二叉树来实现这个数据结构，但是，它还需要满足以下两个性质：</p>
+<ol>
+<li>
+<p>每个节点都小于或等于它的两个子节点</p>
+</li>
+<li>
+<p>只允许树的最底部有空缺，其他层必须是完整的，且所有节点尽可能靠左</p>
+</li>
+</ol>
+<p><img alt="MinPQ.png" src="/upload/MinPQ.png"></p>
+<p>在上图中，绿色表示有效的堆，红色则不是</p>
+<p>我们同样使用数组来表示这样一棵树。但与 BST 不同，根节点存储在 pq[1] 中，而不是 pq[0]；对于树上的节点 K，它的子节点，父节点位于:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span>leftChild(k) <span style="color:#f92672">=</span> 2 <span style="color:#f92672">*</span> k
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">rightChild</span>(k) <span style="color:#f92672">=</span> 2 <span style="color:#f92672">*</span> k <span style="color:#f92672">+</span> 1
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">parent</span>(k) <span style="color:#f92672">=</span> k <span style="color:#f92672">/</span> 2
+</span></span></code></pre></div><p>比如根节点（k = 1) 的左节点存储在 pq[2]，右节点存储在 pq[3]，其左右节点的父节点（也就是根节点自身）存储在 pq[1]（2 / 2 = 3 / 2 = 1）</p>
+<h2 id="3-implements">3. Implements</h2>
+<p>这里是一个 <a href="https://algs4.cs.princeton.edu/24pq/MinPQ.java.html">MinPQ的实现</a></p>
+<p>课程 <a href="https://sp18.datastructur.es/materials/lab/lab10/lab10">lab10</a> 内容就是实现一个自己的最小堆，<a href="https://github.com/WhaleFall-UESTC/CS61B-Spring-2018/blob/master/lab10/ArrayHeap.java">这里</a>是我的实现</p>
+<p>就像最开始我们实现的链表一样，堆同样会需要<code>resize()</code>操作来调整大小</p>
+<h3 id="add">add</h3>
+<p>将新 add 的元素添加到队伍末尾，然后调用<code>swim()</code>使其向上“游”到合适的位置</p>
+<p><code>swim()</code>则是不断比较根节点大小，若根节点更大，则交换两者，直到 swim 的元素到比根节点大</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">insert</span>(Key x) {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// double size of array if necessary</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (n <span style="color:#f92672">==</span> pq.<span style="color:#a6e22e">length</span> <span style="color:#f92672">-</span> 1) resize(2 <span style="color:#f92672">*</span> pq.<span style="color:#a6e22e">length</span>);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// add x, and percolate it up to maintain heap invariant</span>
+</span></span><span style="display:flex;"><span>    pq<span style="color:#f92672">[++</span>n<span style="color:#f92672">]</span> <span style="color:#f92672">=</span> x;
+</span></span><span style="display:flex;"><span>    swim(n);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">assert</span> isMinHeap();
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#66d9ef">private</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">swim</span>(<span style="color:#66d9ef">int</span> k) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (k <span style="color:#f92672">&gt;</span> 1 <span style="color:#f92672">&amp;&amp;</span> greater(k<span style="color:#f92672">/</span>2, k)) {
+</span></span><span style="display:flex;"><span>        exch(k<span style="color:#f92672">/</span>2, k);     <span style="color:#75715e">// swap</span>
+</span></span><span style="display:flex;"><span>        k <span style="color:#f92672">=</span> k<span style="color:#f92672">/</span>2;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="getsmallest">getSmallest</h3>
+<p>只要返回根节点 pq[1] 便可</p>
+<h3 id="removesmallest">removeSmallest</h3>
+<p>将根节点与数组最末尾的元素进行交换，这样 pq[1] 存放着原先最末尾的元素，然后将 pq 最某位设成 null 删除原来的 root</p>
+<p>接着调用<code>sink(1)</code>，使现在的最顶部元素下沉到合适位置</p>
+<p><code>sink()</code>则是不断比较子节点大小，若子节点更小则交换，直到比任何子节点都要小</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#66d9ef">public</span> Key <span style="color:#a6e22e">removeSmallest</span>() {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (isEmpty()) <span style="color:#66d9ef">throw</span> <span style="color:#66d9ef">new</span> NoSuchElementException(<span style="color:#e6db74">&#34;Priority queue underflow&#34;</span>);
+</span></span><span style="display:flex;"><span>    Key min <span style="color:#f92672">=</span> pq<span style="color:#f92672">[</span>1<span style="color:#f92672">]</span>;
+</span></span><span style="display:flex;"><span>    exch(1, n<span style="color:#f92672">--</span>);   <span style="color:#75715e">// n 表示堆中元素数量</span>
+</span></span><span style="display:flex;"><span>    sink(1);
+</span></span><span style="display:flex;"><span>    pq<span style="color:#f92672">[</span>n<span style="color:#f92672">+</span>1<span style="color:#f92672">]</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">null</span>;     <span style="color:#75715e">// to avoid loitering and help with garbage collection</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> ((n <span style="color:#f92672">&gt;</span> 0) <span style="color:#f92672">&amp;&amp;</span> (n <span style="color:#f92672">==</span> (pq.<span style="color:#a6e22e">length</span> <span style="color:#f92672">-</span> 1) <span style="color:#f92672">/</span> 4)) resize(pq.<span style="color:#a6e22e">length</span> <span style="color:#f92672">/</span> 2);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">assert</span> isMinHeap();
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> min;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">private</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">sink</span>(<span style="color:#66d9ef">int</span> k) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (2<span style="color:#f92672">*</span>k <span style="color:#f92672">&lt;=</span> n) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">int</span> j <span style="color:#f92672">=</span> 2<span style="color:#f92672">*</span>k;
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (j <span style="color:#f92672">&lt;</span> n <span style="color:#f92672">&amp;&amp;</span> greater(j, j<span style="color:#f92672">+</span>1)) j<span style="color:#f92672">++</span>;
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>greater(k, j)) <span style="color:#66d9ef">break</span>;
+</span></span><span style="display:flex;"><span>        exch(k, j);
+</span></span><span style="display:flex;"><span>        k <span style="color:#f92672">=</span> j;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div>]]></content>
+        </item>
+        
+        <item>
+            <title>CS61B 学习笔记 - Hash Code</title>
+            <link>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;hash&#43;code/</link>
+            <pubDate>Tue, 30 Jul 2024 09:13:29 +0000</pubDate>
+            
+            <guid>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;hash&#43;code/</guid>
+            <description>Valid Hashcodes 有效的哈希码必须拥有一下两个属性：
+确定性（Deterministic）：如果两个对象A和B彼此相等（A.equals(B) == true），则它们的hashCode()函数返回相同的哈希码。这也意味着哈希函数不能依赖于在equals()方法中没有反映的对象属性。
+比如我们有一个类Dog，其equals方法是：
+@Override public boolean equals(Object other) { if (other == this) return true; if (other == null) return false; if (other.getClass() != this.getClass()) return false; Dog that = (Dog) other; return this.breed == that.breed; } 那么我们的hashCode()就不能依赖breed之外的属性了
+另外，这也要求，当我们重写hashCode()时，我们也必须同时重写equals()，因为这是我们认为两个对象相等的唯一依据。
+一致性（Consistent）：hashCode()函数在同一个对象实例上每次调用时都返回相同的整数。这意味着hashCode()函数必须独立于时间/秒表、随机数生成器或任何在同一个对象实例上多次调用hashCode()函数时不会给出一致哈希码的方法。
+请注意，没有要求说不相等的对象应该有不同的哈希函数值，那怕每次只返回 -1，那也是一个有效的哈希码。
+Good Hashcodes hashCode()函数必须是有效的。
+hashCode()函数的值应该尽可能均匀地分布在整个整数集合上。
+hashCode()函数的计算应该相对快速（理想情况下是O(1)的常量时间数学运算）。</description>
+            <content type="html"><![CDATA[<h2 id="valid-hashcodes">Valid Hashcodes</h2>
+<p>有效的哈希码必须拥有一下两个属性：</p>
+<ol>
+<li>
+<p><strong>确定性（Deterministic）</strong>：如果两个对象A和B彼此相等（<code>A.equals(B) == true</code>），则它们的hashCode()函数返回相同的哈希码。这也意味着哈希函数不能依赖于在<code>equals()</code>方法中没有反映的对象属性。</p>
+<p>比如我们有一个类<code>Dog</code>，其<code>equals</code>方法是：</p>
+<pre><code>@Override
+public boolean equals(Object other) {
+    if (other == this) return true;
+    if (other == null) return false;
+    if (other.getClass() != this.getClass()) return false;
+    Dog that = (Dog) other;
+    return this.breed == that.breed;
+}
+</code></pre>
+<p>那么我们的<code>hashCode()</code>就不能依赖<code>breed</code>之外的属性了</p>
+<p>另外，这也要求，<strong>当我们重写</strong><code>hashCode()</code><strong>时，我们也必须同时重写</strong><code>equals()</code>，因为这是我们认为两个对象相等的唯一依据。</p>
+</li>
+<li>
+<p><strong>一致性（Consistent）</strong>：hashCode()函数在同一个对象实例上每次调用时都返回相同的整数。这意味着hashCode()函数必须独立于时间/秒表、随机数生成器或任何在同一个对象实例上多次调用hashCode()函数时不会给出一致哈希码的方法。</p>
+<p>请注意，没有要求说不相等的对象应该有不同的哈希函数值，那怕每次只返回 -1，那也是一个有效的哈希码。</p>
+</li>
+</ol>
+<h2 id="good-hashcodes">Good Hashcodes</h2>
+<ol>
+<li>
+<p>hashCode()函数必须是有效的。</p>
+</li>
+<li>
+<p>hashCode()函数的值应该尽可能均匀地分布在整个整数集合上。</p>
+</li>
+<li>
+<p>hashCode()函数的计算应该相对快速（理想情况下是O(1)的常量时间数学运算）。</p>
+</li>
+</ol>
+]]></content>
+        </item>
+        
+        <item>
+            <title>CS61B 学习笔记 - BST &amp; B-Trees</title>
+            <link>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;bst&#43;&#43;b-trees/</link>
+            <pubDate>Tue, 30 Jul 2024 07:55:29 +0000</pubDate>
+            
+            <guid>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;bst&#43;&#43;b-trees/</guid>
+            <description>我们都知道，二分搜索，比起一个一个查找，有着非常优秀的运行时间。但是对于一个单向链表，这种算法似乎就束手无策了。
+但是，如果我们换种思路，从最开始如何形成这个“链表”，也就是数据结构下手的话&amp;hellip;&amp;hellip;二分查找不就没有问题了吗？
+1. BST Definitions Tree 由节点和连接这些节点的边组成，任意两个节点之间只有一条路径
+Binary Tree 除了上述要求外，还满足二叉属性约束。即，每个节点有0、1或2个子节点
+Binary Search Tree 除了上述所有要求外，还满足以下性质：
+对于树中的每个节点X：
+左子树中的每个键都小于X的键
+右子树中的每个键都大于X的键
+2. BST Operations find 得益于二叉搜索树的特性，我们可以很简单地使用二分查找
+static BST find(BST T, Key sk) { if (T == null) return null; if (sk.equals(T.key)) return T; else if (sk ≺ T.key) return find(T.left, sk); else return find(T.right, sk); } insert 只需注意在插入时也保持左边小，右边大的特性就行
+static BST insert(BST T, Key ik) { if (T == null) return new BST(ik); if (ik ≺ T.</description>
+            <content type="html"><![CDATA[<p>我们都知道，二分搜索，比起一个一个查找，有着非常优秀的运行时间。但是对于一个单向链表，这种算法似乎就束手无策了。</p>
+<p><img alt="link list.png" src="/upload/link%20list.png"></p>
+<p>但是，如果我们换种思路，从最开始如何形成这个“链表”，也就是数据结构下手的话&hellip;&hellip;二分查找不就没有问题了吗？</p>
+<p><img alt="binary tree.png" src="/upload/binary%20tree.png"></p>
+<h2 id="1-bst-definitions">1. BST Definitions</h2>
+<h3 id="tree">Tree</h3>
+<p>由节点和连接这些节点的边组成，任意两个节点之间只有一条路径</p>
+<h3 id="binary-tree">Binary Tree</h3>
+<p>除了上述要求外，还满足二叉属性约束。即，每个节点有0、1或2个子节点</p>
+<h3 id="binary-search-tree">Binary Search Tree</h3>
+<p>除了上述所有要求外，还满足以下性质：</p>
+<p>对于树中的每个节点X：</p>
+<p>左子树中的每个键都小于X的键</p>
+<p>右子树中的每个键都大于X的键</p>
+<h2 id="2-bst-operations">2. BST Operations</h2>
+<h3 id="find">find</h3>
+<p>得益于二叉搜索树的特性，我们可以很简单地使用二分查找</p>
+<pre><code>static BST find(BST T, Key sk) {
+   if (T == null)
+      return null;
+   if (sk.equals(T.key))
+      return T;
+   else if (sk ≺ T.key)
+      return find(T.left, sk);
+   else
+      return find(T.right, sk);
+}
+</code></pre>
+<h3 id="insert">insert</h3>
+<p>只需注意在插入时也保持左边小，右边大的特性就行</p>
+<pre><code>static BST insert(BST T, Key ik) {
+  if (T == null)
+    return new BST(ik);
+  if (ik ≺ T.key)
+    T.left = insert(T.left, ik);
+  else if (ik ≻ T.key)
+    T.right = insert(T.right, ik);
+  return T;
+}
+</code></pre>
+<h3 id="delete">delete</h3>
+<p>删除操作的话则需更具被删除节点的子节点数分情况讨论：</p>
+<p>0 个子节点：直接删除，相信 Java 的垃圾收集</p>
+<p>1 个子节点：直接将子节点替上</p>
+<p>2 个子节点：不替上任意一个子节点，相反，为这两个字节点重新寻找一个满足 BST 特性的父节点。比如，被删除节点的左子树最右边的节点（比左子树其他的节点都要大，且小于右节点所有节点），右子树最左边的节点（比右子树其他节点都要小，且大于左子树所有节点）</p>
+<p>比如当我们要删除 dog 时，我们应当用 cat 或 elf 替换</p>
+<p><img alt="BST delete.png" src="/upload/BST%20delete.png"></p>
+<h2 id="3-bst-performance">3. BST Performance</h2>
+<p>BST的高度和平均深度是决定性能的重要属性。高度指的是最深的叶子的深度，是树的属性；而深度指的是特定节点到根的距离，是特定于节点的属性。树的平均深度是每个节点深度的平均值。</p>
+<p>高度和平均深度决定了BST操作的运行时间。高度决定了查找节点的最坏情况运行时间，而平均深度决定了搜索操作的平均情况运行时间。</p>
+<p>插入节点的顺序对BST的高度和平均深度有很大的影响。例如，考虑插入节点1、2、3、4、5、6、7。这导致了一个细长的BST，高度为6，平均深度为3。如果我们按照4、2、1、3、6、5、7的顺序插入相同的节点，我们得到的高度是2，平均深度是1.43。</p>
+<p><img alt="insert order diff.png" src="/upload/insert%20order%20diff.png"></p>
+<p>我们自然希望树是茂密的而非细长的，但是我们往往无法决定插入的顺序。因此，我们需要找到一种方法去维持 BST 的 &ldquo;bushiness&rdquo;</p>
+<h2 id="4-b-trees">4. B-Trees</h2>
+<p>这里是一个 <a href="https://algs4.cs.princeton.edu/code/edu/princeton/cs/algs4/BTree.java">B树的实现</a></p>
+<p>在这里可以将 <a href="https://www.cs.usfca.edu/~galles/visualization/BTree.html">B树操作可视化</a></p>
+<h3 id="avoiding-imbalance">Avoiding Imbalance</h3>
+<p>如果可以尽可能保证树的高度不变，我们自然可以保证树的茂密。一种想法是，我们可以“过度填充”叶节点：不是将插入节点放在叶节点之下，而是和它“挤”在一起。</p>
+<p><img alt="overstuffing.png" src="/upload/overstuffing.png"></p>
+<p>但是，若是让叶节点无限拓张，我们等于又回到了线性问题。</p>
+<h3 id="moving-items-up">Moving Items Up</h3>
+<p>所以，当叶节点挤到一定数量后，我们可以考虑将其上移。比如，当叶节点数量超过 3 时，我们使其中一个节点上移。然后，我们再插入 18，19：</p>
+<p><img alt="moving up.png" src="/upload/moving%20up.png"></p>
+<p>好吧，这样我们放弃了二叉搜索属性，但是取而代之，我们将 15-17 这个过度填充节点的子节点重新分为了 3 类：(−∞, 15), [15, 17], (18, +∞)，这样我们可以保持和 BST 类似的操作。</p>
+<p>插入节点可能会导致连锁反应，比如下图插入 25，26 后：</p>
+<p><img alt="chain react.png" src="/upload/chain%20react.png"></p>
+<h3 id="invariants">Invariants</h3>
+<p>由于b树的构造方式，它们有两个不变的特性:</p>
+<ol>
+<li>
+<p>所有的叶子到根的距离相同。</p>
+</li>
+<li>
+<p>具有k项的非叶节点必须恰好有k + 1个子节点。</p>
+</li>
+</ol>
+<p>这两个不变量保证了茂密树具有 logN 高度</p>
+]]></content>
+        </item>
+        
+        <item>
+            <title>CS61B 学习笔记 - Disjoint Sets</title>
+            <link>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;disjoint&#43;sets/</link>
+            <pubDate>Mon, 29 Jul 2024 08:19:40 +0000</pubDate>
+            
+            <guid>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;disjoint&#43;sets/</guid>
+            <description>1. Interface 对于 Disjoint Sets，我们定义如下接口：
+public interface DisjointSets { /** connects two items P and Q */ void connect(int p, int q); /** checks to see if two items are connected */ boolean isConnected(int p, int q); } connect 方法会将两个整数归为同一个集合，isConnected 则用来判断两个整数是否为同一集合
+例如，我们有四个元素 A，B，C，D
+在调用connect(A, B) 后：
+isConnected(A, B) -&amp;gt; true
+isConnected(A, C) -&amp;gt; false
+然后调用connect(A, D)：
+于是有：
+isConnected(A, D) -&amp;gt; true
+isConnected(A, C) -&amp;gt; false
+2. Implements 完整的实现请参照 WeightedQuickUnionUF
+2.1 isConnected 我们使用parent数组来表示这样的不相交集。准确来说，使用数组来表示几颗棵树，处在同一棵树的元素，即拥有相同根节点的元素，属于同一个集合</description>
+            <content type="html"><![CDATA[<h2 id="1-interface">1. Interface</h2>
+<p>对于 Disjoint Sets，我们定义如下接口：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">interface</span> <span style="color:#a6e22e">DisjointSets</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">/** connects two items P and Q */</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">connect</span>(<span style="color:#66d9ef">int</span> p, <span style="color:#66d9ef">int</span> q);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">/** checks to see if two items are connected */</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">boolean</span> <span style="color:#a6e22e">isConnected</span>(<span style="color:#66d9ef">int</span> p, <span style="color:#66d9ef">int</span> q); 
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>connect</code> 方法会将两个整数归为同一个集合，<code>isConnected</code> 则用来判断两个整数是否为同一集合</p>
+<p>例如，我们有四个元素 A，B，C，D</p>
+<p><img alt="image (1).avif" src="/upload/image%20(1).avif"></p>
+<p>在调用<code>connect(A, B)</code> 后：</p>
+<p><img alt="image (2).avif" src="/upload/image%20(2).avif"></p>
+<p><code>isConnected(A, B) -&gt; true</code></p>
+<p><code>isConnected(A, C) -&gt; false</code></p>
+<p>然后调用<code>connect(A, D)</code>：</p>
+<p><img alt="image (3).avif" src="/upload/image%20(3).avif"></p>
+<p>于是有：</p>
+<p><code>isConnected(A, D) -&gt; true</code></p>
+<p><code>isConnected(A, C) -&gt; false</code></p>
+<h2 id="2-implements">2. Implements</h2>
+<p>完整的实现请参照 <a href="https://algs4.cs.princeton.edu/15uf/WeightedQuickUnionUF.java.html">WeightedQuickUnionUF</a></p>
+<h3 id="21-isconnected">2.1 isConnected</h3>
+<p>我们使用<code>parent</code>数组来表示这样的不相交集。准确来说，使用数组来表示几颗棵树，处在同一棵树的元素，即拥有相同根节点的元素，属于同一个集合</p>
+<p>顾名思义，<code>parent</code> 数组中，数组下标对应位置存储的是该元素的父节点。例如<code>parent[0] = 3</code> ，则元素 0 的父节点是 3 。若存储为负数，则表示该节点是根节点</p>
+<p>下图是用数组表示的一个例子：</p>
+<p><img alt="9.3.1.png" src="/upload/9.3.1.png"></p>
+<p>归功于这种结构，我们可以很方便地判断两个元素是否同属于一个集合。新建一个公共方法<code>find(int p)</code>，它返回元素<code>p</code> 的根节点</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">int</span> <span style="color:#a6e22e">find</span>(<span style="color:#66d9ef">int</span> p) {
+</span></span><span style="display:flex;"><span>    validate(p);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (parent<span style="color:#f92672">[</span>p<span style="color:#f92672">]</span> <span style="color:#f92672">&gt;=</span> 0)
+</span></span><span style="display:flex;"><span>        p <span style="color:#f92672">=</span> parent<span style="color:#f92672">[</span>p<span style="color:#f92672">]</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> p;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>于是<code>find(2) == 0</code> ，<code>find(4) == 0</code> ,故而<code>isConnected(2, 4) == true</code></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">boolean</span> <span style="color:#a6e22e">isConnected</span>(<span style="color:#66d9ef">int</span> p, <span style="color:#66d9ef">int</span> q) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> find(p) <span style="color:#f92672">==</span> find(q);
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="22-connect">2.2 connect</h3>
+<p>还是这张图：</p>
+<p><img alt="9.3.1.png" src="/upload/9.3.1.png"></p>
+<p>现在，如果我们调用<code>connect(2, 3)</code> ，很自然的想法是，将<code>parent[3]</code> 设置为<code>2</code> ，这样 3 就成为了 2 的子节点，同时，0，1，2，3，4，5 就被放到了同一集合中，符合我们的期望</p>
+<p>但是以效率的角度来说，我们不希望形成的树是细长的，我们希望它是扁平而又茂密的</p>
+<p><img alt="image.avif" src="/upload/image.avif"></p>
+<p>如上图一颗细长树，<code>find()</code>所需时间为 O(N)。当我们调用 <code>find(4)</code>时，我们要想上寻找 4 次才能找到 0</p>
+<p>但是，在最理想情况，我们完全可以让 0 成为其他所有元素的父节点，这样调用<code>find()</code>时只需要寻找一次，时间压缩到了 O(logN)</p>
+<p>所以说，比起将 3 放在 2 底下，更应该放在根节点 0 下</p>
+<p><img alt="9.3.2.png" src="/upload/9.3.2.png"></p>
+<p>而这样的实现并不困难，我们可以先调用<code>find(2)</code>和<code>find(3)</code>，然后再对其根节点进行操作就行了</p>
+<p>但是，为什么是 3 放在 0 下，而不是 0 放在 3 下呢？</p>
+<p>我们希望树的层数尽可能少，前者可以任维持 3 层，而后者会涨至 4 层，所以如此</p>
+<p>为了使层数最少，我们将更小的树放在更大的树之下。为此，我们需要维护一个<code>size</code> 数组，记录以下标为根节点的树所含元素数量。在上图中，<code>size[0] == 6</code>，<code>size[3] == 2</code> ，所以我们将 3 放在 0 下</p>
+<p>于是我们给出<code>connect()</code>的实现：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">union</span>(<span style="color:#66d9ef">int</span> p, <span style="color:#66d9ef">int</span> q) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> rootP <span style="color:#f92672">=</span> find(p);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> rootQ <span style="color:#f92672">=</span> find(q);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (rootP <span style="color:#f92672">==</span> rootQ) <span style="color:#66d9ef">return</span>;
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// make smaller root point to larger one</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (size<span style="color:#f92672">[</span>rootP<span style="color:#f92672">]</span> <span style="color:#f92672">&lt;</span> size<span style="color:#f92672">[</span>rootQ<span style="color:#f92672">]</span>) {
+</span></span><span style="display:flex;"><span>        parent<span style="color:#f92672">[</span>rootP<span style="color:#f92672">]</span> <span style="color:#f92672">=</span> rootQ;
+</span></span><span style="display:flex;"><span>        size<span style="color:#f92672">[</span>rootQ<span style="color:#f92672">]</span> <span style="color:#f92672">+=</span> size<span style="color:#f92672">[</span>rootP<span style="color:#f92672">]</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span>        parent<span style="color:#f92672">[</span>rootQ<span style="color:#f92672">]</span> <span style="color:#f92672">=</span> rootP;
+</span></span><span style="display:flex;"><span>        size<span style="color:#f92672">[</span>rootP<span style="color:#f92672">]</span> <span style="color:#f92672">+=</span> size<span style="color:#f92672">[</span>rootQ<span style="color:#f92672">]</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    count<span style="color:#f92672">--</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div>]]></content>
+        </item>
+        
     </channel>
 </rss>

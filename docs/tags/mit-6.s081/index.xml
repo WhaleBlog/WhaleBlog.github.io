@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Mit-6.s081 on WhaleFall&#39;s Blog</title>
+    <link>https://whaleblog.github.io/tags/mit-6.s081/</link>
+    <description>Recent content in Mit-6.s081 on WhaleFall&#39;s Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh</language>
+    <copyright>&lt;a href=&#34;https://creativecommons.org/licenses/by-nc/4.0/&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;CC BY-NC 4.0&lt;/a&gt;</copyright>
+    <lastBuildDate>Sun, 01 Sep 2024 13:42:00 +0000</lastBuildDate>
+    <atom:link href="https://whaleblog.github.io/tags/mit-6.s081/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Virtual Machines</title>
+      <link>https://whaleblog.github.io/posts/virtual&#43;machines/</link>
+      <pubDate>Sun, 01 Sep 2024 13:42:00 +0000</pubDate>
+      <guid>https://whaleblog.github.io/posts/virtual&#43;machines/</guid>
+      <description>Host &amp;amp; Guest 虚拟机是对于计算机的模拟，顾名思义。QEMU 可以说是虚拟机的一个例子&#xA;在虚拟机架构的最底层，位于硬件之上存在一个 Virtual Machine Monitor（VMM），它取代了标准的操作系统内核。VMM 的工作是模拟多个计算机用来运行 Guest 操作系统。VMM 往上一层是 Guest 空间，对比一个操作系统的用户空间&#xA;在 Host 空间运行的是VMM，在 Guest 空间运行的是普通的操作系统。除此之外，在 Guest 空间又可以分为 Guest Supervisor Mode 和 Guest User Mode&#xA;我们的目的是让运行在 Guest 中的代码完全不能区分自己是运行在一个虚拟机还是物理机中，因为我们希望能在虚拟机中运行任何操作系统。这意味着对于任何操作系统的行为包括使用硬件的方式，虚拟机都必须提供提供对于硬件的完全相同的模拟，这样任何在真实硬件上能工作的代码，也同样能在虚拟机中工作；我们同样不希望 Guest 从虚拟机中逃逸&#xA;但是实际中出于性能的考虑，很难做到完全的模拟。出于效率的考虑，在 VMM 允许的前提下，Linux 某些时候知道自己正在与 VMM 交互，以获得对于设备的高速访问权限。不过实现虚拟机的大致策略还是完全准确的模拟物理服务器&#xA;Trap-and-Emulate How to build VMM 一种构建 VMM 的方式是完全通过软件模拟（比如用数组模拟寄存器，用 C 代码模拟指令行为），但是很慢，因为你的 VMM 在解析每一条 Guest 指令的时候，都可能要转换成几十条实际的机器指令，这会导致运行速度慢几个数量级。&#xA;相应的，一种广泛使用的策略是在真实的 CPU 上运行 Guest 指令。但是前面说过，我们将 Guest kernel 按照一个 Linux 中的普通用户进程来运行，所以 Guest kernel 现在运行在 User mode，这样在运行 privileged 指令时又会出现问题。但是如果我们蠢到将 Guest kernel 运行在宿主机的 Supervisor mode。那么我们的 Guest kernel 不仅能够修改真实的 Page Table，同时也可以从虚拟机中逃逸，因为它现在可以控制 PTE（Page Table Entry）的内容，并且读写任意的内存内容</description>
+    </item>
+    <item>
+      <title>Meltdown</title>
+      <link>https://whaleblog.github.io/posts/meltdown/</link>
+      <pubDate>Sat, 31 Aug 2024 21:07:01 +0000</pubDate>
+      <guid>https://whaleblog.github.io/posts/meltdown/</guid>
+      <description>Meltdown 是一种利用了 CPU 预测执行的攻击手段。如它的名字一样，它”溶解“了用户空间与内核空间的隔离性。详细内容可以访问 https://meltdownattack.com 查看&#xA;在这个网站里面还记录了另一个漏洞 Spectre。Intel 的芯片被指出均存在 Meltdown 漏洞, 而 Spectre 漏洞则是危害着所有架构的芯片, 无一幸免。这两个可谓目前为止体系结构历史上影响最大的漏洞了&#xA;在有关这个漏洞发布时（2018），大部分操作系统都会将内核内存完整映射到用户空间程序，因为这使得当发生系统调用时，你不用切换 Page Table，也不必清空各种缓存。所以所有的内核 PTE 都会出现在用户程序的 Page Table 中，但是因为这些 PTE 的 PTE_U 比特位没有被设置，用户代码并不能实际的使用内核内存地址&#xA;但是 Meltdown 找到了一种方法，可以在没有权限的情况下读取特定地址的比特位。接下来会讲攻击者利用的两个技巧，一个是预测执行，一个是 CPU 缓存&#xA;学生提问：所以为了能够攻击，需要先知道内核的虚拟内存地址？&#xA;Robert 教授：是的。或许找到内存地址本身就很难，但是你需要假设攻击者有无限的时间和耐心，如果他们在找某个数据，他们或许愿意花费几个月的时间来窃取这个数据。有可能这是某人用来登录银行账号或者邮件用的密码。这意味着攻击者可能需要尝试每一个内核内存地址，以查找任何有价值的数据。&#xA;在这个攻守双方的游戏中，我们需要假设攻击者最后可以胜出并拿到内核的虚拟内存地址。所以我们会假设攻击者要么已经知道了一个内核虚拟地址，要么愿意尝试每一个内核虚拟内存地址。&#xA;Speculative execution 预测执行是一种用来提升 CPU 性能的技术。假设我们运行如下代码：&#xA;r0 = &amp;lt;something&amp;gt; r1 = valid if (r1 == 1) { r2 = *r0 r3 = r2 + 1 } else { r3 = 0 } /* r0, r1, r2, r3 are registers, valid is in RAM */ 任何一个需要从内存中读取数据的 load 指令都会花费 2GHZ CPU 的数百个 CPU cycle，在 r1 获取 valid 值时亦是如此</description>
+    </item>
+    <item>
+      <title>宏内核与微内核</title>
+      <link>https://whaleblog.github.io/posts/%E5%AE%8F%E5%86%85%E6%A0%B8%E4%B8%8E%E5%BE%AE%E5%86%85%E6%A0%B8/</link>
+      <pubDate>Sat, 31 Aug 2024 11:45:36 +0000</pubDate>
+      <guid>https://whaleblog.github.io/posts/%E5%AE%8F%E5%86%85%E6%A0%B8%E4%B8%8E%E5%BE%AE%E5%86%85%E6%A0%B8/</guid>
+      <description>完整内容请见：https://mit-public-courses-cn-translatio.gitbook.io/mit6-s081/lec18-os-organization-robert&#xA;Monolithic Kernel 宏内核优势 monolithic 的意思是指操作系统内核是一个完成了各种事情的大的程序，我们熟知的 Linux 是由这种方式所构建。通常来说 monolithic kernel 集成了文件系统，内存分配，调度器，虚拟内存系统等一系列复杂的组件，以及许多强大的抽象。这样带来的好处是显而易见的：&#xA;这些高度抽象的接口通常是可移植的，可以在各种各样的存储设备上实现文件和目录，而不需要改变代码&#xA;可以向应用程序隐藏复杂性。Linux 提供了地址空间的抽象，而不是让程序直接访问 MMU。另外一个例子是，我们可以直接对 fd 调用 read/write，而不需要直接接触文件系统中各个层级&#xA;帮助管理共享资源，比如内存与磁盘&#xA;因为所有这些功能都在一个程序里面，所以组件之间可以访问彼此的数据结构，进而使得依赖多个组件的工具更容易实现。比如 exec 系统调用，它依赖文件系统，因为它要从磁盘中读取二进制文件并加载到内存中，同时它也依赖内存分配和虚拟内存系统，因为它需要设置好新的进程的地址空间。但是在内核态我们可以没有隔离地访问 inode，proc，pgtbl 等结构体，所以 exec 的中实现是相对简单的&#xA;内核的所有代码都以完整的硬件权限（内核都在 Supervisor mode）在运行，这也简化了软件的实现&#xA;宏内核劣势 但是其缺点也很明显，这也是为什么其他内核架构，比如微内核，出现的原因，monolithic kernel 并不适用于所有的场景：&#xA;它们大且复杂。到目前为止，Linux 的代码量来到了千万行。一个组件可以很方便地与另一个组件交互，这确实使得编程更容易了，但同样意味着内部代码有大量的交互和依赖，以至于看明白代码都有挑战。而且大型的程序与复杂的结构也同样伴随着大量的 Bug 与安全漏洞，如果使用宏内核，这些几乎不可避免&#xA;另一个人们不喜欢 monolithic kernel 的原因是，随着时间的推移，它们倾向于发展成拥有所有的功能。Linux 应用在各种场合中，从移动电话到桌面工作站，从笔记本电脑到平板电脑，从服务器到路由器。Linux可以支持这么多设备是极好的，这也使得 Linux 非常的通用。这很好，但是另一方面，通用就意味着慢。对于各种不同的场景都能支持，或许就不能对某些特定场景进行优化。况且很多时候我们根本用不着这么多功能。另外，这也使得完成一些简单的工作需要做很多额外的事情：比如当我们使用 pipe 时，我们需要 buffering，locking，sleep/wakeup，还有 context switching&amp;hellip;&amp;hellip; 但是对于从一个进程移动一个字节到另一个进程来说，这里有大量的内容或许并不是必须的&#xA;宏内核还可能因为太大反而削弱了抽象能力。你可以 wait 你自己 fork 的子进程，但不可以等待其他的；你可以 mmap 自己的地址空间，但是为了隔离性不能修改其他的；你可以在磁盘上建一个 B 树，但是读取磁盘时，文件系统不知道这是一个 B 树，这反而不利于效率&#xA;还有就是可扩展性，你只能使用内核提供的能力&#xA;Micro Kernel 微内核是指一种通用的方法或者概念，并不特指任何特定的产品&#xA;微内核的核心就是实现了 IPC（Inter-Process Communication）以及线程和任务的 tiny kernel。所以微内核只提供了进程抽象和通过IPC进程间通信的方式，除此之外别无他物。任何你想要做的事情，例如文件系统，你都会通过一个用户空间进程来实现，完全不会在内核中实现</description>
+    </item>
+    <item>
+      <title>xv6 实验日志 - Sleep &amp; Wakeup</title>
+      <link>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;sleep&#43;&#43;wakeup/</link>
+      <pubDate>Thu, 22 Aug 2024 11:19:42 +0000</pubDate>
+      <guid>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;sleep&#43;&#43;wakeup/</guid>
+      <description>xv6 在进程切换之时还有一些限制：不允许进程在执行switch函数的过程中，持有任何其他的锁。即进程在调用switch函数的过程中，必须要持有 p-&amp;gt;lock，但是同时又不能持有任何其他的锁&#xA;假设我们在一个只有一个CPU核的机器上，进程 P1 调用了 swtch 函数将 CPU 控制转给了调度器线程，调度器线程发现还有一个进程 P2 的内核线程正在等待被运行，所以调度器线程会切换到运行进程 P2。假设 P2 也想使用磁盘，UART 或者 console，它会对 P1 持有的锁调用 acquire，这是对于同一个锁的第二个 acquire 调用。这形成了死锁&#xA;后面讨论 Sleep &amp;amp; Wakeup 如何工作时会再次使用它们&#xA;Sleep &amp;amp; Wakeup 当我们写一个线程的代码时，有些场景需要等待一些特定的事件，比如读取 pipe 等待非空，磁盘写入一类，可能来自于 I/O，也可能来自于另一个进程&#xA;我们怎么能让进程或者线程等待一些特定的事件呢？一种非常直观的方法是通过循环实现 busy-wait。假设我们想从一个 pipe 读取数据，我们就写一个循环一直等待 pipe 的 buffer 不为空&#xA;如果你知道你要等待的事件极有可能在 0.1 微秒内发生，通过一个类似的循环等待或许是最正确的方式。通常来说在操作设备硬件的代码中会采用这样的等待方式&#xA;如果事件可能需要数个毫秒（要知道现代 PC 每秒运行数亿次指令）甚至你都不知道事件要多久才能发生，那么我们就不想在这一直循环并且浪费本可以用来完成其他任务的 CPU 时间。这时我们想要通过类似 swtch 函数调用的方式出让 CPU，并在我们关心的事件发生时重新获取 CPU。Coordination 就是有关出让 CPU ，直到等待的事件发生再恢复执行的工具。与许多 Unix 风格操作系统一样，xv6 使用 Sleep &amp;amp; Wakeup 的方式&#xA;// Atomically release lock and sleep on chan.</description>
+    </item>
+    <item>
+      <title>xv6 实验日志 - Thread</title>
+      <link>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;thread/</link>
+      <pubDate>Tue, 20 Aug 2024 16:35:21 +0000</pubDate>
+      <guid>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;thread/</guid>
+      <description>在 xv6 中，我们认为线程就是单个串行执行代码的单元，它只占用一个CPU并且以普通的方式一个接一个的执行指令&#xA;线程具有状态，我们可以随时保存线程的状态并暂停线程的运行，并在之后通过恢复状态来恢复线程的运行。线程的状态包含了三个部分：PC，寄存器，栈&#xA;在 xv6 中，每个进程有两个线程，一个用户线程执行用户空间代码，一个内核线程处理系统调用之类的事，并且存在限制使得一个进程要么运行在用户空间线程，要么为了执行系统调用或者响应中断而运行在内核空间线程 ，但是永远也不会两者同时运行。除此之外，每个 CPU 都有一个调度器线程，这些调度器线程有自己独立的栈&#xA;Linux 允许在一个用户进程中包含多个线程，进程中的多个线程共享进程的地址空间&#xA;学生提问：操作系统都带了线程的实现，如果想要在多个CPU上运行一个进程内的多个线程，那需要通过操作系统来处理而不是用户空间代码，是吧？那这里的线程切换是怎么工作的？是每个线程都与进程一样了吗？操作系统还会遍历所有存在的线程吗？比如说我们有8个核，每个CPU核都会在多个进程的更多个线程之间切换。同时我们也不想只在一个CPU核上切换一个进程的多个线程，是吧？&#xA;Robert教授：Linux是支持一个进程包含多个线程，Linux的实现比较复杂，或许最简单的解释方式是：几乎可以认为Linux中的每个线程都是一个完整的进程。Linux中，我们平常说一个进程中的多个线程，本质上是共享同一块内存的多个独立进程。所以Linux中一个进程的多个线程仍然是通过一个内存地址空间执行代码。如果你在一个进程创建了2个线程，那基本上是2个进程共享一个地址空间。之后，调度就与XV6是一致的，也就是针对每个进程进行调度&#xA;在 xv6 和其他的操作系统中，线程调度是这么实现的：定时器中断会强制的将 CPU 控制权从用户进程给到内核，这里是 pre-emptive scheduling（先发制人，或防御性调度），之后内核会代表用户进程（注，实际是内核中用户进程对应的内核线程会代表用户进程出让CPU），使用 voluntary scheduling&#xA;在执行线程调度的时候，操作系统需要能区分几类线程：&#xA;RUNNING：当前在 CPU 上运行的线程&#xA;RUNABLE： 一旦CPU有空闲时间就想要运行在CPU上的线程&#xA;SLEEPING： 以及不想运行在CPU上的线程，因为这些线程可能在等待I/O或者其他事件&#xA;对于 xv6 来说，并不会直接让用户线程出让CPU或者完成线程切换，而是由内核在合适的时间点做决定。内核会在两个场景下出让 CPU：一是定时器中断触发了，二是任何时候一个进程调用了系统调用并等待I/O&#xA;当人们在说 context switching（上下文切换）时，可以指线程切换也可以指进程切换，还可以是用户与内核的切换。这里的 context switching 主要是指一个内核线程和调度器线程之间的切换&#xA;每一个CPU核在一个时间只会做一件事情，每个CPU核在一个时间只会运行一个线程，它要么是运行用户进程的线程，要么是运行内核线程，要么是运行这个CPU核对应的调度器线程。所以在任何一个时间点，CPU核并没有做多件事情，而是只做一件事情。线程的切换创造了多个线程同时运行在一个CPU上的假象。类似的每一个线程要么是只运行在一个CPU核上，要么它的状态被保存在context中。线程永远不会运行在多个CPU核上，线程要么运行在一个CPU核上，要么就没有运行&#xA;xv6 线程调度 用户进程切换流程 从一个用户进程切换到另一个用户进程，都需要从第一个用户进程接入到内核中，保存用户进程的状太并运行第一个用户进程的内核线程&#xA;再从第一个用户进程的内核线程切换到 CPU 的调度线程&#xA;调度线程选择好了之后会进入第二个用户进程的内核线程&#xA;之后，第二个用户进程的内核线程暂停自己，并恢复第二个用户进程的用户寄存器&#xA;最后返回到第二个用户进程继续执行&#xA;状态保存位置 用户进程状态保存在 trapframe，内核线程状态保存在 proc 的 context，调度线程的状态保存在 cpu 的 context&#xA;现在，我们可以重新看看这几个熟悉的结构体了：&#xA;struct cpu { struct proc *proc; // The process running on this cpu, or null.</description>
+    </item>
+    <item>
+      <title>xv6 实验日志 - Lock</title>
+      <link>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;lock/</link>
+      <pubDate>Mon, 19 Aug 2024 20:07:43 +0000</pubDate>
+      <guid>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;lock/</guid>
+      <description>刚开始接触这个概念的时候觉得锁更像是通行证一类的东西。问了下 AI，它这么和我解释：&#xA;锁（Lock）通常用于确保同一时间只有一个进程或线程能够访问某个资源。当进程或线程想要访问资源时，它必须先获得锁，完成操作后释放锁。这有点像是进入一个房间，你必须拿到钥匙（锁）才能进入，用完后再把钥匙还回去，这样其他人才能使用&#xA;锁就是一个对象，就像其他在内核中的对象一样。有一个结构体叫做 lock，它包含了一些字段，这些字段中维护了锁的状态。锁有非常直观的 API：&#xA;acquire，接收指向 lock 的指针作为参数。acquire 确保了在任何时间，只会有一个进程能够成功的获取锁&#xA;release，也接收指向 lock 的指针作为参数。在同一时间尝试获取锁的其他进程需要等待，直到持有锁的进程对锁调用 release&#xA;锁的 acquire 和 release 之间的代码，通常被称为 critical section&#xA;之所以被称为 critical section，是因为通常会在这里以原子的方式执行共享数据的更新。所以基本上来说，如果在 acquire 和 release 之间有多条指令，它们要么会一起执行，要么一条也不会执行。所以永远也不可能看到位于 critical section 中的代码，如同在 race condition 中一样在多个 CPU 上交织的执行，所以这样就能避免 race condition&#xA;锁序列化了代码的执行。如果两个处理器想要进入到同一个 critical section 中，只会有一个能成功进入，另一个处理器会在第一个处理器从 critical section 中退出之后再进入。所以这里完全没有并行执行&#xA;锁的使用完全是由程序员决定的。如果你想要一段代码具备原子性，那么其实是由程序员决定是否增加锁的 acquire 和 release。其次，代码不会自动加锁，程序员自己要确定好是否将锁与数据结构关联，并在适当的位置增加锁的 acquire 和 release&#xA;什么时候用锁 一个简单的规则 一个非常保守同时也是非常简单的规则：如果两个进程访问了一个共享的数据结构，并且其中一个进程会更新共享的数据结构，那么就需要对于这个共享的数据结构加锁&#xA;但这条规则又很矛盾：这条规则某种程度上来说又太过严格了。如果有两个进程共享一个数据结构，并且其中一个进程会更新这个数据结构，在某些场合不加锁也可以正常工作；而有时候这个规则又太过宽松了。除了共享的数据，在一些其他场合也需要锁，例如对于 printf，如果我们将一个字符串传递给它，xv6 会尝试原子性的将整个字符串输出，而不是与其他进程的 printf 交织输出。尽管这里没有共享的数据结构，但在这里锁仍然很有用处，因为我们想要printf的输出也是序列化的&#xA;好吧，这条规则并不完美，但是它已经是一个足够好的指导准则&#xA;自动加锁 如果按照刚刚的简单规则，一旦我们有了一个共享的数据结构，任何操作这个共享数据结构都需要获取锁，那么对其进行操作时自动地获取锁即可&#xA;但是这样并不行，假如说我要把 ~/dir1/x 文件 mv 到 ~/dir2/y，那么按照这条规则，先对 x 加锁，删除 x，然后释放锁；再对 y 加锁，创建 y，接着释放锁。</description>
+    </item>
+    <item>
+      <title>xv6 实验日志 - Interrupts</title>
+      <link>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;interrupts/</link>
+      <pubDate>Mon, 19 Aug 2024 10:52:05 +0000</pubDate>
+      <guid>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;interrupts/</guid>
+      <description>虽然以中断为名，但这里并不涉及软件中断和计时器中断。这里只为搞清一件事情：xv6 Console 的 $ ls 是怎么出现的&#xA;我们从 xv6 的启动开始讲起&#xA;设置中断 在 kernel.ld 中定义了 _entry 为入口点&#xA;_entry 最后跳转到了 start（在 kernel/start.c 中）&#xA;start 将所有的中断都设置在Supervisor mode，然后设置SIE寄存器来接收External，软件和定时器中断，之后初始化定时器。通过设置 mepc 为 main，然后执行 mret，跳转到 main（kernel/main.c）中&#xA;main 中最先调用 consoleinit()，这个函数初始化了锁，调用 uartinit() 后设置了 consoleread/write，是方便后续系统调用读写时做分发&#xA;uartinit() 先关闭中断，设置了一堆寄存器，最后打开了中断。原则上UART就可以生成中断了，但是还没处理 PLIC（Platform Level Interrupt Control，处理器用于处理设备中断）&#xA;中断到达PLIC之后，PLIC会路由这些中断。PLIC会将中断路由到某一个CPU的核。如果所有的CPU核都正在处理中断，PLIC会保留中断直到有一个CPU核可以用来处理中断。所以PLIC需要保存一些内部数据来跟踪中断的状态。&#xA;这里的具体流程是：&#xA;PLIC会通知当前有一个待处理的中断&#xA;其中一个CPU核会Claim接收中断，这样PLIC就不会把中断发给其他的CPU处理&#xA;CPU核处理完中断之后，CPU会通知PLIC&#xA;PLIC将不再保存中断的信息&#xA;在 main() 函数的后面部分调用了 plicinit() 与 plicinithart()。plicinit() 使能 PLIC 接受 UART 与 VIRTIO 的中断。plicinithart() 则让每个 CPU 声明其可处理 UART 与 VIRTIO 的中断，并设置了优先级&#xA;在 main 最后的 scheduler 函数中会调用 intr_on()。这个函数设置了 sstatus 的 SIE，打开中断标志位，这样 CPU 就有能力接受中断了</description>
+    </item>
+    <item>
+      <title>xv6 实验日志 - Page Table</title>
+      <link>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;page&#43;table/</link>
+      <pubDate>Thu, 15 Aug 2024 10:56:03 +0000</pubDate>
+      <guid>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;page&#43;table/</guid>
+      <description>页表 这张图片很好地说明了 xv6 页表机制&#xA;其中补充说明几点：&#xA;虚拟地址由三部分所组成：EXT（无实际作用，忽略），三级页表的 index，以及物理页的偏移量 offset&#xA;每个页表占据一个 PGSIZE 的空间 （4096 bytes），每个页表内有 512 个条目，称为 PTE。每个 PTE 有 64 位，由 PPN 与 Flag 所组成。&#xA;对于第一，第二级页表的 PPN，其所指向的是下一级页表的物理地址（由 PPN &amp;laquo; 12 可得）。第三级页表的 PPN 指向的是虚拟地址所映射的物理页的起始地址，加上 va 的 offset 便可得到实际的 pa&#xA;satp 寄存器指向第一级页表的物理地址&#xA;PTE 中的 flag 在图片的下方有详细的描述&#xA;OS 对于地址的映射有绝对的控制权，可以任意地将某个虚拟页映射到某个物理页&#xA;虚拟地址到物理地址转换的步骤是由硬件的 MMU 实现的，OS 负责处理页表。但在 xv6 中有 walk() 函数模拟这一点，因为 xv6 通过直接写物理地址来实现内核空间与用户空间的传参&#xA;// Return the address of the PTE in page table pagetable // that corresponds to virtual address va.</description>
+    </item>
+    <item>
+      <title>xv6 实验日志 - Trap</title>
+      <link>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;trap/</link>
+      <pubDate>Wed, 14 Aug 2024 20:28:07 +0000</pubDate>
+      <guid>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;trap/</guid>
+      <description>今天在看系统调用的时候发现自己把 xv6 的内存映射的约定给忘了。因为害怕后续做实验的时候会把前面花了不少时间才弄明白的机制遗忘，所以决定简单记录一下&#xA;今天看的是陷阱，目前只讨论从用户态陷入内核态的流程。我对源代码进行了注释，但是放在了 pgtbl 分支下，不方便以后做实验看，便就贴在这了&#xA;关于课程，有佬做了中文精翻：Trap 机制，阅读体验极佳&#xA;0. 一些前置知识 STVEC（Supervisor Trap Vector Base Address Register）寄存器，它指向了内核中处理 trap 的指令的起始地址&#xA;SEPC（Supervisor Exception Program Counter）寄存器，在trap的过程中保存程序计数器的值&#xA;SSRATCH（Supervisor Scratch Register）寄存器，有点像临时寄存器&#xA;SATP（Supervisor Address Translation and Protection）寄存器，它包含了指向page table的物理内存地址&#xA;ecall 指令会做如下 3 件事：&#xA;从 user mode 切到 supervisor mode&#xA;将程序计数器的值保存在了 SEPC&#xA;跳转到 STVEC 寄存器指向的指令&#xA;sret 指令会做：&#xA;程序会切换回 user mode&#xA;SEPC 的值会被拷贝到 PC&#xA;重新打开中断&#xA;supervisor mode 并不那么特权，在这个模式下只能做两件事情：&#xA;访问控制寄存器&#xA;对 PTE_U = 0 的页进行操作（也就是说不能操作 PTE_U = 1 的页，不能直接访问物理地址）&#xA;trampoline 在 用户空间与内核空间会被映射在相同的虚拟地址，说明书中给出的原因是：</description>
+    </item>
+  </channel>
+</rss>

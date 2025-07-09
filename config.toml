@@ -83,4 +83,4 @@ publishDir = "docs"
   identifier = "tags"
   name = "Tags"
   url = "/tags"
-  weight = 2
+  weight = 3
