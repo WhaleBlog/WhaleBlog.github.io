@@ -7,7 +7,9 @@ export msg="$1"
 export flag="-m"
 
 if [ -z "$msg" ]; then
-    export flag="--allow-empty"
+    export flag="--allow-empty -m"
+    export msg="Empty commit"
+    echo "No commit message provided. Using default: '$msg'"
 fi
 
 git add .
