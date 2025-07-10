@@ -12,6 +12,7 @@ categories:
 tags: 
  - mit-6.s081
  - xv6
+ - OS
 ---
 
 刚开始接触这个概念的时候觉得锁更像是通行证一类的东西。问了下 AI，它这么和我解释：
@@ -119,40 +120,40 @@ struct spinlock {
 这里不能使用 sd 写 address。在硬件层面上，sd 会被分成几个子操作，在执行 sd 指令的过程中，处理器可能会被中断，导致指令执行被暂时挂起；在多处理器系统中，sd 指令执行后，新写入的值可能不会立即对所有处理器可见
 
 xv6 中 acquire 源代码如下：
-
-    void
-    acquire(struct spinlock *lk)
-    {
-      push_off(); // disable interrupts to avoid deadlock.
-      if(holding(lk))
+```C
+void
+acquire(struct spinlock *lk)
+{
+    push_off(); // disable interrupts to avoid deadlock.
+    if(holding(lk))
         panic("acquire");
     
-      // On RISC-V, sync_lock_test_and_set turns into an atomic swap:
-      //   a5 = 1
-      //   s1 = &lk->locked
-      //   amoswap.w.aq a5, a5, (s1)
-      while(__sync_lock_test_and_set(&lk->locked, 1) != 0)
+    // On RISC-V, sync_lock_test_and_set turns into an atomic swap:
+    //   a5 = 1
+    //   s1 = &lk->locked
+    //   amoswap.w.aq a5, a5, (s1)
+    while(__sync_lock_test_and_set(&lk->locked, 1) != 0)
         ;
     
-      // Tell the C compiler and the processor to not move loads or stores
-      // past this point, to ensure that the critical section's memory
-      // references happen strictly after the lock is acquired.
-      // On RISC-V, this emits a fence instruction.
-      __sync_synchronize();
+    // Tell the C compiler and the processor to not move loads or stores
+    // past this point, to ensure that the critical section's memory
+    // references happen strictly after the lock is acquired.
+    // On RISC-V, this emits a fence instruction.
+    __sync_synchronize();
     
       // Record info about lock acquisition for holding() and debugging.
-      lk->cpu = mycpu();
-    }
-    
+    lk->cpu = mycpu();
+}
+```
 
 可以看到循环判断 locked 的部分的汇编代码
-
-      while(__sync_lock_test_and_set(&lk->locked, 1) != 0)
+```C
+while(__sync_lock_test_and_set(&lk->locked, 1) != 0)
         800062ba:	87ba                	mv	a5,a4
         800062bc:	0cf4a7af          	amoswap.w.aq	a5,a5,(s1)
         800062c0:	2781                	sext.w	a5,a5
         800062c2:	ffe5                	bnez	a5,800062ba <acquire+0x22>
-    
+``` 
 
 ### 关闭中断
 

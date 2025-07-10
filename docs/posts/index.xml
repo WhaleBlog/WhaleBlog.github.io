@@ -915,38 +915,36 @@ release，也接收指向 lock 的指针作为参数。在同一时间尝试获�
 <p>这条指令会先锁定住 address，将 address 中的数据保存在一个临时变量中（tmp），之后将 r1 中的数据写入到地址中，之后再将保存在临时变量中的数据写入到 r2 中，最后再对于地址解锁。即最后 r1 维持不变，r2 保存了 address 处原来的值，地址 address 处的值变更为 r1</p>
 <p>这里不能使用 sd 写 address。在硬件层面上，sd 会被分成几个子操作，在执行 sd 指令的过程中，处理器可能会被中断，导致指令执行被暂时挂起；在多处理器系统中，sd 指令执行后，新写入的值可能不会立即对所有处理器可见</p>
 <p>xv6 中 acquire 源代码如下：</p>
-<pre><code>void
-acquire(struct spinlock *lk)
-{
-  push_off(); // disable interrupts to avoid deadlock.
-  if(holding(lk))
-    panic(&quot;acquire&quot;);
-
-  // On RISC-V, sync_lock_test_and_set turns into an atomic swap:
-  //   a5 = 1
-  //   s1 = &amp;lk-&gt;locked
-  //   amoswap.w.aq a5, a5, (s1)
-  while(__sync_lock_test_and_set(&amp;lk-&gt;locked, 1) != 0)
-    ;
-
-  // Tell the C compiler and the processor to not move loads or stores
-  // past this point, to ensure that the critical section's memory
-  // references happen strictly after the lock is acquired.
-  // On RISC-V, this emits a fence instruction.
-  __sync_synchronize();
-
-  // Record info about lock acquisition for holding() and debugging.
-  lk-&gt;cpu = mycpu();
-}
-</code></pre>
-<p>可以看到循环判断 locked 的部分的汇编代码</p>
-<pre><code>  while(__sync_lock_test_and_set(&amp;lk-&gt;locked, 1) != 0)
-    800062ba:	87ba                	mv	a5,a4
-    800062bc:	0cf4a7af          	amoswap.w.aq	a5,a5,(s1)
-    800062c0:	2781                	sext.w	a5,a5
-    800062c2:	ffe5                	bnez	a5,800062ba &lt;acquire+0x22&gt;
-</code></pre>
-<h3 id="关闭中断">关闭中断</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#66d9ef">void</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">acquire</span>(<span style="color:#66d9ef">struct</span> spinlock <span style="color:#f92672">*</span>lk)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">push_off</span>(); <span style="color:#75715e">// disable interrupts to avoid deadlock.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">if</span>(<span style="color:#a6e22e">holding</span>(lk))
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">panic</span>(<span style="color:#e6db74">&#34;acquire&#34;</span>);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// On RISC-V, sync_lock_test_and_set turns into an atomic swap:
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">//   a5 = 1
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">//   s1 = &amp;lk-&gt;locked
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">//   amoswap.w.aq a5, a5, (s1)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">while</span>(<span style="color:#a6e22e">__sync_lock_test_and_set</span>(<span style="color:#f92672">&amp;</span>lk<span style="color:#f92672">-&gt;</span>locked, <span style="color:#ae81ff">1</span>) <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>        ;
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Tell the C compiler and the processor to not move loads or stores
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// past this point, to ensure that the critical section&#39;s memory
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// references happen strictly after the lock is acquired.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// On RISC-V, this emits a fence instruction.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">__sync_synchronize</span>();
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>      <span style="color:#75715e">// Record info about lock acquisition for holding() and debugging.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    lk<span style="color:#f92672">-&gt;</span>cpu <span style="color:#f92672">=</span> <span style="color:#a6e22e">mycpu</span>();
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>可以看到循环判断 locked 的部分的汇编代码</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#66d9ef">while</span>(<span style="color:#a6e22e">__sync_lock_test_and_set</span>(<span style="color:#f92672">&amp;</span>lk<span style="color:#f92672">-&gt;</span>locked, <span style="color:#ae81ff">1</span>) <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#ae81ff">800062</span>ba:	<span style="color:#ae81ff">87</span>ba                	mv	a5,a4
+</span></span><span style="display:flex;"><span>        <span style="color:#ae81ff">800062</span>bc:	<span style="color:#ae81ff">0</span>cf4a7af          	amoswap.w.aq	a5,a5,(s1)
+</span></span><span style="display:flex;"><span>        <span style="color:#ae81ff">800062</span>c0:	<span style="color:#ae81ff">2781</span>                	sext.w	a5,a5
+</span></span><span style="display:flex;"><span>        <span style="color:#ae81ff">800062</span>c2:	ffe5                	bnez	a5,<span style="color:#ae81ff">800062</span>ba <span style="color:#f92672">&lt;</span>acquire<span style="color:#f92672">+</span><span style="color:#ae81ff">0x22</span><span style="color:#f92672">&gt;</span>
+</span></span></code></pre></div><h3 id="关闭中断">关闭中断</h3>
 <p>这里还又一处细节：在 acquire 最开始通过 push_off 关闭了中断</p>
 <p>以 UART 为例，这个设备使用 uart_tx_lock 一把大锁。假设当 top 驱动向 uart 写入字符时，最终会调用 uartputc。uartputc 函数会 acquire 锁，当 UART 完成了字符传输之后会产生一个中断，之后会运行 uartintr 函数，这个函数也会获取同一把锁，但是这把锁正在被 uartputc 持有。如果只有一个 CPU 的话，那就形成了死锁</p>
 <p>我们需要在 acquire 中关闭中断。中断会在 release 的结束位置再次打开，因为在这个位置才能再次安全的接收中断</p>
@@ -1773,27 +1771,26 @@ def dijkstras(source): # 初始化最小优先队列，存储节点与该节点�
 A* Dijkstra 算法其实像是以起点为中心，向四面八方进行地毯式搜索。但假如我只是搜索武汉到北京的最短路径，我有必要搜索到西藏地区吗？</description>
             <content type="html"><![CDATA[<h2 id="dijkstras-algorithm">Dijkstra&rsquo;s Algorithm</h2>
 <p>还是贴伪代码</p>
-<pre><code>def dijkstras(source):
-    # 初始化最小优先队列，存储节点与该节点到起点的最短距离
-    # 设置起点距离为 0，其他节点距离无限
-    PQ.add(source, 0) 
-    For all other vertices, v, PQ.add(v, infinity)
-    while PQ is not empty:
-        # 出队剩余未操作节点中距离最短的节点
-        p = PQ.removeSmallest()
-        relax(all edges from p)
-
-def relax(edge p,q):
-   if q is visited (i.e., q is not in PQ):
-       return
-    
-   # 若是新路径的距离更短，更新
-   if distTo[p] + weight(edge) &lt; distTo[q]:
-       distTo[q] = distTo[p] + w
-       edgeTo[q] = p
-       PQ.changePriority(q, distTo[q])
-</code></pre>
-<p>在图中存在负边的情况下，Dijkstra 算法不能保证正确。这可能有用……但这并不能保证有效。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Python" data-lang="Python"><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">dijkstras</span>(source):
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># 初始化最小优先队列，存储节点与该节点到起点的最短距离</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># 设置起点距离为 0，其他节点距离无限</span>
+</span></span><span style="display:flex;"><span>    PQ<span style="color:#f92672">.</span>add(source, <span style="color:#ae81ff">0</span>) 
+</span></span><span style="display:flex;"><span>    For all other vertices, v, PQ<span style="color:#f92672">.</span>add(v, infinity)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> PQ <span style="color:#f92672">is</span> <span style="color:#f92672">not</span> empty:
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e"># 出队剩余未操作节点中距离最短的节点</span>
+</span></span><span style="display:flex;"><span>        p <span style="color:#f92672">=</span> PQ<span style="color:#f92672">.</span>removeSmallest()
+</span></span><span style="display:flex;"><span>        relax(all edges <span style="color:#f92672">from</span> p)
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">relax</span>(edge p,q):
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> q <span style="color:#f92672">is</span> visited (i<span style="color:#f92672">.</span>e<span style="color:#f92672">.</span>, q <span style="color:#f92672">is</span> <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> PQ):
+</span></span><span style="display:flex;"><span>       <span style="color:#66d9ef">return</span>
+</span></span><span style="display:flex;"><span>        
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># 若是新路径的距离更短，更新</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> distTo[p] <span style="color:#f92672">+</span> weight(edge) <span style="color:#f92672">&lt;</span> distTo[q]:
+</span></span><span style="display:flex;"><span>       distTo[q] <span style="color:#f92672">=</span> distTo[p] <span style="color:#f92672">+</span> w
+</span></span><span style="display:flex;"><span>       edgeTo[q] <span style="color:#f92672">=</span> p
+</span></span><span style="display:flex;"><span>       PQ<span style="color:#f92672">.</span>changePriority(q, distTo[q])
+</span></span></code></pre></div><p>在图中存在负边的情况下，Dijkstra 算法不能保证正确。这可能有用……但这并不能保证有效。</p>
 <h2 id="a">A*</h2>
 <p>Dijkstra 算法其实像是以起点为中心，向四面八方进行地毯式搜索。但假如我只是搜索武汉到北京的最短路径，我有必要搜索到西藏地区吗？</p>
 <p>当然不会，因为我们知道我们应该向北搜索，而不是转向西南方向。为什么？因为武汉以北的城市会距离北京越来越近，而西南方向的城市会越来越远。</p>
@@ -1806,11 +1803,10 @@ def relax(edge p,q):
 </li>
 <li>
 <p>对于 v 的每个邻居 w:</p>
-<pre><code>heuristic(v, target) &lt;= dist(v, w) + heuristic(w, target)
-</code></pre>
-<p>我们姑且把<code>heuristic(v, target)</code>认为是 v 到 target 的估计距离吧，上面这句话的意思便是，<strong>v到target的估计距离 不得大于 v到w的距离 与 w到target的估计距离 之和</strong></p>
 </li>
 </ol>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Python" data-lang="Python"><span style="display:flex;"><span>heuristic(v, target) <span style="color:#f92672">&lt;=</span> dist(v, w) <span style="color:#f92672">+</span> heuristic(w, target)
+</span></span></code></pre></div><pre><code>我们姑且把`heuristic(v, target)`认为是 v 到 target 的估计距离吧，上面这句话的意思便是，**v到target的估计距离 不得大于 v到w的距离 与 w到target的估计距离 之和**</code></pre>
 ]]></content>
         </item>
         
@@ -1913,9 +1909,7 @@ def relax(edge p,q):
             <description>Valid Hashcodes 有效的哈希码必须拥有一下两个属性：
 确定性（Deterministic）：如果两个对象A和B彼此相等（A.equals(B) == true），则它们的hashCode()函数返回相同的哈希码。这也意味着哈希函数不能依赖于在equals()方法中没有反映的对象属性。
 比如我们有一个类Dog，其equals方法是：
-@Override public boolean equals(Object other) { if (other == this) return true; if (other == null) return false; if (other.getClass() != this.getClass()) return false; Dog that = (Dog) other; return this.breed == that.breed; } 那么我们的hashCode()就不能依赖breed之外的属性了
-另外，这也要求，当我们重写hashCode()时，我们也必须同时重写equals()，因为这是我们认为两个对象相等的唯一依据。
-一致性（Consistent）：hashCode()函数在同一个对象实例上每次调用时都返回相同的整数。这意味着hashCode()函数必须独立于时间/秒表、随机数生成器或任何在同一个对象实例上多次调用hashCode()函数时不会给出一致哈希码的方法。
+@Override public boolean equals(Object other) { if (other == this) return true; if (other == null) return false; if (other.getClass() != this.getClass()) return false; Dog that = (Dog) other; return this.breed == that.breed; } 那么我们的`hashCode()`就不能依赖`breed`之外的属性了 另外，这也要求，**当我们重写**`hashCode()`**时，我们也必须同时重写**`equals()`，因为这是我们认为两个对象相等的唯一依据。 一致性（Consistent）：hashCode()函数在同一个对象实例上每次调用时都返回相同的整数。这意味着hashCode()函数必须独立于时间/秒表、随机数生成器或任何在同一个对象实例上多次调用hashCode()函数时不会给出一致哈希码的方法。
 请注意，没有要求说不相等的对象应该有不同的哈希函数值，那怕每次只返回 -1，那也是一个有效的哈希码。
 Good Hashcodes hashCode()函数必须是有效的。
 hashCode()函数的值应该尽可能均匀地分布在整个整数集合上。
@@ -1926,18 +1920,21 @@ hashCode()函数的计算应该相对快速（理想情况下是O(1)的常量时
 <li>
 <p><strong>确定性（Deterministic）</strong>：如果两个对象A和B彼此相等（<code>A.equals(B) == true</code>），则它们的hashCode()函数返回相同的哈希码。这也意味着哈希函数不能依赖于在<code>equals()</code>方法中没有反映的对象属性。</p>
 <p>比如我们有一个类<code>Dog</code>，其<code>equals</code>方法是：</p>
-<pre><code>@Override
-public boolean equals(Object other) {
-    if (other == this) return true;
-    if (other == null) return false;
-    if (other.getClass() != this.getClass()) return false;
-    Dog that = (Dog) other;
-    return this.breed == that.breed;
-}
-</code></pre>
-<p>那么我们的<code>hashCode()</code>就不能依赖<code>breed</code>之外的属性了</p>
-<p>另外，这也要求，<strong>当我们重写</strong><code>hashCode()</code><strong>时，我们也必须同时重写</strong><code>equals()</code>，因为这是我们认为两个对象相等的唯一依据。</p>
 </li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#a6e22e">@Override</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">boolean</span> <span style="color:#a6e22e">equals</span>(Object other) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (other <span style="color:#f92672">==</span> <span style="color:#66d9ef">this</span>) <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">true</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (other <span style="color:#f92672">==</span> <span style="color:#66d9ef">null</span>) <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">false</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (other.<span style="color:#a6e22e">getClass</span>() <span style="color:#f92672">!=</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">getClass</span>()) <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">false</span>;
+</span></span><span style="display:flex;"><span>    Dog that <span style="color:#f92672">=</span> (Dog) other;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">breed</span> <span style="color:#f92672">==</span> that.<span style="color:#a6e22e">breed</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><pre><code>那么我们的`hashCode()`就不能依赖`breed`之外的属性了
+
+另外，这也要求，**当我们重写**`hashCode()`**时，我们也必须同时重写**`equals()`，因为这是我们认为两个对象相等的唯一依据。
+</code></pre>
+<ol start="2">
 <li>
 <p><strong>一致性（Consistent）</strong>：hashCode()函数在同一个对象实例上每次调用时都返回相同的整数。这意味着hashCode()函数必须独立于时间/秒表、随机数生成器或任何在同一个对象实例上多次调用hashCode()函数时不会给出一致哈希码的方法。</p>
 <p>请注意，没有要求说不相等的对象应该有不同的哈希函数值，那怕每次只返回 -1，那也是一个有效的哈希码。</p>
@@ -1992,30 +1989,28 @@ static BST insert(BST T, Key ik) { if (T == null) return new BST(ik); if (ik ≺
 <h2 id="2-bst-operations">2. BST Operations</h2>
 <h3 id="find">find</h3>
 <p>得益于二叉搜索树的特性，我们可以很简单地使用二分查找</p>
-<pre><code>static BST find(BST T, Key sk) {
-   if (T == null)
-      return null;
-   if (sk.equals(T.key))
-      return T;
-   else if (sk ≺ T.key)
-      return find(T.left, sk);
-   else
-      return find(T.right, sk);
-}
-</code></pre>
-<h3 id="insert">insert</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#66d9ef">static</span> BST <span style="color:#a6e22e">find</span>(BST T, Key sk) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (T <span style="color:#f92672">==</span> <span style="color:#66d9ef">null</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">null</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (sk.<span style="color:#a6e22e">equals</span>(T.<span style="color:#a6e22e">key</span>))
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> T;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> (sk <span style="color:#960050;background-color:#1e0010">≺</span> T.<span style="color:#a6e22e">key</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> find(T.<span style="color:#a6e22e">left</span>, sk);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">else</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> find(T.<span style="color:#a6e22e">right</span>, sk);
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="insert">insert</h3>
 <p>只需注意在插入时也保持左边小，右边大的特性就行</p>
-<pre><code>static BST insert(BST T, Key ik) {
-  if (T == null)
-    return new BST(ik);
-  if (ik ≺ T.key)
-    T.left = insert(T.left, ik);
-  else if (ik ≻ T.key)
-    T.right = insert(T.right, ik);
-  return T;
-}
-</code></pre>
-<h3 id="delete">delete</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#66d9ef">static</span> BST <span style="color:#a6e22e">insert</span>(BST T, Key ik) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (T <span style="color:#f92672">==</span> <span style="color:#66d9ef">null</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">new</span> BST(ik);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (ik <span style="color:#960050;background-color:#1e0010">≺</span> T.<span style="color:#a6e22e">key</span>)
+</span></span><span style="display:flex;"><span>        T.<span style="color:#a6e22e">left</span> <span style="color:#f92672">=</span> insert(T.<span style="color:#a6e22e">left</span>, ik);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> (ik <span style="color:#960050;background-color:#1e0010">≻</span> T.<span style="color:#a6e22e">key</span>)
+</span></span><span style="display:flex;"><span>        T.<span style="color:#a6e22e">right</span> <span style="color:#f92672">=</span> insert(T.<span style="color:#a6e22e">right</span>, ik);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> T;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="delete">delete</h3>
 <p>删除操作的话则需更具被删除节点的子节点数分情况讨论：</p>
 <p>0 个子节点：直接删除，相信 Java 的垃圾收集</p>
 <p>1 个子节点：直接将子节点替上</p>
@@ -2144,6 +2139,120 @@ isConnected(A, C) -&amp;gt; false
 </span></span><span style="display:flex;"><span>    count<span style="color:#f92672">--</span>;
 </span></span><span style="display:flex;"><span>}
 </span></span></code></pre></div>]]></content>
+        </item>
+        
+        <item>
+            <title>在 Matebook E 2022 上安装 Kubuntu18.04</title>
+            <link>https://whaleblog.github.io/posts/%E5%A6%82%E6%9E%9C%E4%BD%A0%E6%83%B3%E5%9C%A8&#43;matebook&#43;e&#43;2022&#43;%E4%B8%8A%E4%BD%BF%E7%94%A8&#43;linux/</link>
+            <pubDate>Sat, 06 Jul 2024 16:26:00 +0000</pubDate>
+            
+            <guid>https://whaleblog.github.io/posts/%E5%A6%82%E6%9E%9C%E4%BD%A0%E6%83%B3%E5%9C%A8&#43;matebook&#43;e&#43;2022&#43;%E4%B8%8A%E4%BD%BF%E7%94%A8&#43;linux/</guid>
+            <description>0. 在开始之前 P.S. 这篇博客的内容已过时
+这篇博客不牵涉启动盘的制作，磁盘分区以及系统安装的过程（这些内容你大可以 STFW，网络上有很多更加成熟的教程），目的更多在于方便本人重装之后能够快速上手，故而本文的内容比较杂，包括针对该设备的系统设置，常用工具的安装以及简单的美化
+在 Matebook E 2022 这台设备上安装 Linux 时会遇到显卡驱动的问题，可以看看这个帖子：Huawei Matebook e 2022 款 Iris Xe 显卡问题。对于我这台机子，在不开安全模式的情况下，屏幕的左右两侧会像地质断层一样上下割裂错位。我尝试了 Arch Linux 和 Ubuntu 24 到 19 的版本，皆会出现上述的情况。只有 Kubuntu 18.04 这个版本才能正常显示
+好吧，如果你只是想用这台机器装一个可以使用的 Linux 系统的话，目前我已知最简单的方式，安装 Kubuntu 18.04 吧
+后面有佬做到了在这台设备上安装 Arch Linux，并且详细讲述了后续的安装流程，我跟着他的说明成功安装。所以，如果是要在日常中使用的话，就没有必要将时间花在这篇老古董身上了
+1. 系统设置 Hardware -&amp;gt; Display and Monitor -&amp;gt; 将窗口拉大后可以看到 Scale Display -&amp;gt; 滑动 Scale 调整至 1.7 或 1.8
+Power Management -&amp;gt; Energy Saving -&amp;gt; 自行设置（设备默认省电方案可能会导致系统卡死的情况出现）
+如果不小心删除了底部面板：右键桌面 -&amp;gt; Add Panel -&amp;gt; Kubuntu Default Panel</description>
+            <content type="html"><![CDATA[<h2 id="0-在开始之前">0. 在开始之前</h2>
+<p><strong>P.S. 这篇博客的内容已过时</strong></p>
+<p>这篇博客不牵涉启动盘的制作，磁盘分区以及系统安装的过程（这些内容你大可以 STFW，网络上有很多更加成熟的教程），目的更多在于方便本人重装之后能够快速上手，故而本文的内容比较杂，包括针对该设备的系统设置，常用工具的安装以及简单的美化</p>
+<p>在 Matebook E 2022 这台设备上安装 Linux 时会遇到显卡驱动的问题，可以看看这个帖子：<a href="https://bbs.archlinuxcn.org/viewtopic.php?id=12223">Huawei Matebook e 2022 款 Iris Xe 显卡问题</a>。对于我这台机子，在不开安全模式的情况下，屏幕的左右两侧会像地质断层一样上下割裂错位。我尝试了 Arch Linux 和 Ubuntu 24 到 19 的版本，皆会出现上述的情况。<del>只有 Kubuntu 18.04 这个版本才能正常显示</del></p>
+<p><del>好吧，如果你只是想用这台机器装一个可以使用的 Linux 系统的话，目前我已知最简单的方式，安装 <a href="https://mirrors.nju.edu.cn/ubuntu-cdimage/kubuntu/releases/18.04/">Kubuntu 18.04</a> 吧</del></p>
+<p>后面有佬做到了在这台设备上<a href="https://www.cnblogs.com/Vanilla-chan/p/18365339/Huawei-Matebook-e-2022-install-archlinux-double-system">安装 Arch Linux</a>，并且详细讲述了后续的安装流程，我跟着他的说明成功安装。所以，如果是要在日常中使用的话，就没有必要将时间花在这篇老古董身上了</p>
+<h2 id="1-系统设置">1. 系统设置</h2>
+<p>Hardware -&gt; Display and Monitor -&gt; 将窗口拉大后可以看到 Scale Display -&gt; 滑动 Scale 调整至 1.7 或 1.8</p>
+<p>Power Management -&gt; Energy Saving -&gt; 自行设置（设备默认省电方案可能会导致系统卡死的情况出现）</p>
+<p>如果不小心删除了底部面板：右键桌面 -&gt; Add Panel -&gt; Kubuntu Default Panel</p>
+<h3 id="11-声卡问题">1.1 声卡问题</h3>
+<p>刚安装好系统后是没有声音的。可以按照这篇博客做：<a href="https://zhuanlan.zhihu.com/p/122887848">UBUNTU 声卡提示 Dummy Output 或伪输出解决办法</a></p>
+<p>多重启几次之后才会有效</p>
+<h2 id="2-常用工具的安装">2. 常用工具的安装</h2>
+<h3 id="21-换源">2.1 换源</h3>
+<pre><code>cd /etc/apt
+sudo cp sources.list sources.list.bak
+sudo vi sources.list
+</code></pre>
+<p><a href="https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu/">清华源 for Ubuntu 18.04</a></p>
+<pre><code># 默认注释了源码镜像以提高 apt update 速度，如有需要可自行取消注释
+deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic main restricted universe multiverse
+# deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic main restricted universe multiverse
+deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-updates main restricted universe multiverse
+# deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-updates main restricted universe multiverse
+deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-backports main restricted universe multiverse
+# deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-backports main restricted universe multiverse
+​
+# 以下安全更新软件源包含了官方源与镜像站配置，如有需要可自行修改注释切换
+deb http://security.ubuntu.com/ubuntu/ bionic-security main restricted universe multiverse
+# deb-src http://security.ubuntu.com/ubuntu/ bionic-security main restricted universe multiverse
+​
+# 预发布软件源，不建议启用
+# deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-proposed main restricted universe multiverse
+# # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-proposed main restricted universe multiverse
+</code></pre>
+<p>然后输入</p>
+<pre><code>sudo apt update
+sudo apt upgrade
+</code></pre>
+<h3 id="22-中文输入法">2.2 中文输入法</h3>
+<p>在系统设置内进入区域设置，选择语言，将“简体中文”移至 Preferred Language，重启后系统语言变为中文</p>
+<p>接着参考 <a href="https://blog.csdn.net/Graceying/article/details/118117245">kubuntu18.04 安装搜狗输入法</a></p>
+<h3 id="23-科学上网工具">2.3 科学上网工具</h3>
+<p>参考这两篇博客：</p>
+<p><a href="https://opclash.com/article/302.html">Ubuntu 使用 Clash For Linux 客户端教程</a></p>
+<p>如果 MMDB 无法下载，可以从 Clash for Windows 里面拿，然后拷贝到 ~/.config/clash 里面</p>
+<p><a href="https://opclash.com/article/139.html">Linux 系统使用 ShadowSocksR 客户端教程</a></p>
+<h3 id="24-基础工具">2.4 基础工具</h3>
+<p>包括美化部分，我为我自己的配置建立了 git 仓库：</p>
+<p><a href="https://github.com/WhaleFall-UESTC/Config">https://github.com/WhaleFall-UESTC/Config</a></p>
+<pre><code>sudo apt-get install build-essential
+sudo apt-get install man
+sudo apt-get install gcc-doc
+sudo apt-get install gdb
+sudo apt-get install git
+sudo apt-get insatll vim
+sudo apt-get insatll tmux
+sudo apt-get insatll ccache
+sudo apt-get insatll make
+sudo apt-get insatll curl
+sudo apt-get insatll neofetch
+sudo snap install code --classic
+
+git config --global user.name &quot;xxxxxxxx&quot;
+git config --global user.email &quot;xxxxxxxxx@xx.xxx&quot;
+git config --global core.editor vim
+git config --global color.ui true
+</code></pre>
+<p><a href="https://missing.csail.mit.edu/2020/files/vimrc">这里</a>是 <a href="https://missing.csail.mit.edu/2020/editors/">MIT Missing Semester</a> 里面提供的 .vimrc</p>
+<p>tmux.conf 可以参考 <a href="https://hamvocke.com/blog/a-guide-to-customizing-your-tmux-conf/">MAKE TMUX PRETTY AND USABLE - A GUIDE TO CUSTOM­IZING YOUR TMUX.CONF</a></p>
+<p>fd 下载 <a href="https://github.com/sharkdp/fd/releases">https://github.com/sharkdp/fd/releases</a> 里面对应版本即可</p>
+<h2 id="3-简单的美化">3. 简单的美化</h2>
+<p>系统设置 -&gt; 工作空间主题 -&gt; Get New Look，然后按照评分排序，选一个喜欢的下载</p>
+<p>终端美化参考这两篇博客：</p>
+<p><a href="https://blog.imfing.com/2020/06/ubuntu-18-04-theme-terminal-setup/">Ubuntu 美化与终端配置</a></p>
+<p><a href="https://blog.csdn.net/ruipeng_liu/article/details/129701000">ubuntu 终端美化之 zsh/oh-my-zsh</a></p>
+<pre><code># 安装 zsh
+sudo apt install zsh
+# 确认 zsh 成功安装
+which zsh
+# 设置为默认 Shell
+chsh -s /usr/bin/zsh
+
+# 克隆项目到“~/”位置
+git clone https://github.com/robbyrussell/oh-my-zsh.git ~/.oh-my-zsh
+# 将配置文件复制到指定位置
+cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc
+
+# 下载主题 Powerlevel10k
+git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/themes/powerlevel10k
+# 下载插件
+git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+</code></pre>
+<p>接着在 ~/.zshrc 中设置 ZSH_THEME=&ldquo;powerlevel10k/powerlevel10k&rdquo;，plugins=(git zsh-autosuggestions zsh-syntax-highlighting)，重启终端后即可查看到效果。</p>
+<p>还需要在 Konsole 内部将默认的 Shell 从 /bin/bash 改为 /usr/bin/zsh，并将透明度修改为 75%</p>
+]]></content>
         </item>
         
     </channel>

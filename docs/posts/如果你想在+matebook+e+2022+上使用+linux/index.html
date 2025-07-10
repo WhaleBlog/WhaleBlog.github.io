@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh">
+    <head>
+        <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="author" content="">
+<meta name="description" content="0. 在开始之前 P.S. 这篇博客的内容已过时
+这篇博客不牵涉启动盘的制作，磁盘分区以及系统安装的过程（这些内容你大可以 STFW，网络上有很多更加成熟的教程），目的更多在于方便本人重装之后能够快速上手，故而本文的内容比较杂，包括针对该设备的系统设置，常用工具的安装以及简单的美化
+在 Matebook E 2022 这台设备上安装 Linux 时会遇到显卡驱动的问题，可以看看这个帖子：Huawei Matebook e 2022 款 Iris Xe 显卡问题。对于我这台机子，在不开安全模式的情况下，屏幕的左右两侧会像地质断层一样上下割裂错位。我尝试了 Arch Linux 和 Ubuntu 24 到 19 的版本，皆会出现上述的情况。只有 Kubuntu 18.04 这个版本才能正常显示
+好吧，如果你只是想用这台机器装一个可以使用的 Linux 系统的话，目前我已知最简单的方式，安装 Kubuntu 18.04 吧
+后面有佬做到了在这台设备上安装 Arch Linux，并且详细讲述了后续的安装流程，我跟着他的说明成功安装。所以，如果是要在日常中使用的话，就没有必要将时间花在这篇老古董身上了
+1. 系统设置 Hardware -&amp;gt; Display and Monitor -&amp;gt; 将窗口拉大后可以看到 Scale Display -&amp;gt; 滑动 Scale 调整至 1.7 或 1.8
+Power Management -&amp;gt; Energy Saving -&amp;gt; 自行设置（设备默认省电方案可能会导致系统卡死的情况出现）
+如果不小心删除了底部面板：右键桌面 -&amp;gt; Add Panel -&amp;gt; Kubuntu Default Panel" />
+<meta name="keywords" content=", linux" />
+<meta name="robots" content="noodp" />
+<meta name="theme-color" content="" />
+<link rel="canonical" href="https://whaleblog.github.io/posts/%E5%A6%82%E6%9E%9C%E4%BD%A0%E6%83%B3%E5%9C%A8&#43;matebook&#43;e&#43;2022&#43;%E4%B8%8A%E4%BD%BF%E7%94%A8&#43;linux/" />
+
+
+    <title>
+        
+            在 Matebook E 2022 上安装 Kubuntu18.04 :: WhaleFall&#39;s Blog 
+        
+    </title>
+
+
+
+
+
+  <link rel="stylesheet" href="/main.min.ab5336003ba331300318b49292c672210905baf1ef5410a739f647e70c8808fa.css" integrity="sha256-q1M2ADujMTADGLSSksZyIQkFuvHvVBCnOfZH5wyICPo=" crossorigin="anonymous">
+
+
+
+
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <meta name="msapplication-TileColor" content="">
+
+
+<meta itemprop="name" content="在 Matebook E 2022 上安装 Kubuntu18.04">
+<meta itemprop="description" content="0. 在开始之前 P.S. 这篇博客的内容已过时
+这篇博客不牵涉启动盘的制作，磁盘分区以及系统安装的过程（这些内容你大可以 STFW，网络上有很多更加成熟的教程），目的更多在于方便本人重装之后能够快速上手，故而本文的内容比较杂，包括针对该设备的系统设置，常用工具的安装以及简单的美化
+在 Matebook E 2022 这台设备上安装 Linux 时会遇到显卡驱动的问题，可以看看这个帖子：Huawei Matebook e 2022 款 Iris Xe 显卡问题。对于我这台机子，在不开安全模式的情况下，屏幕的左右两侧会像地质断层一样上下割裂错位。我尝试了 Arch Linux 和 Ubuntu 24 到 19 的版本，皆会出现上述的情况。只有 Kubuntu 18.04 这个版本才能正常显示
+好吧，如果你只是想用这台机器装一个可以使用的 Linux 系统的话，目前我已知最简单的方式，安装 Kubuntu 18.04 吧
+后面有佬做到了在这台设备上安装 Arch Linux，并且详细讲述了后续的安装流程，我跟着他的说明成功安装。所以，如果是要在日常中使用的话，就没有必要将时间花在这篇老古董身上了
+1. 系统设置 Hardware -&gt; Display and Monitor -&gt; 将窗口拉大后可以看到 Scale Display -&gt; 滑动 Scale 调整至 1.7 或 1.8
+Power Management -&gt; Energy Saving -&gt; 自行设置（设备默认省电方案可能会导致系统卡死的情况出现）
+如果不小心删除了底部面板：右键桌面 -&gt; Add Panel -&gt; Kubuntu Default Panel"><meta itemprop="datePublished" content="2024-07-06T16:26:00+00:00" />
+<meta itemprop="dateModified" content="2024-07-06T16:26:00+00:00" />
+<meta itemprop="wordCount" content="400"><meta itemprop="image" content="https://whaleblog.github.io/" />
+<meta itemprop="keywords" content="linux," />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content="https://whaleblog.github.io/" /><meta name="twitter:title" content="在 Matebook E 2022 上安装 Kubuntu18.04"/>
+<meta name="twitter:description" content="0. 在开始之前 P.S. 这篇博客的内容已过时
+这篇博客不牵涉启动盘的制作，磁盘分区以及系统安装的过程（这些内容你大可以 STFW，网络上有很多更加成熟的教程），目的更多在于方便本人重装之后能够快速上手，故而本文的内容比较杂，包括针对该设备的系统设置，常用工具的安装以及简单的美化
+在 Matebook E 2022 这台设备上安装 Linux 时会遇到显卡驱动的问题，可以看看这个帖子：Huawei Matebook e 2022 款 Iris Xe 显卡问题。对于我这台机子，在不开安全模式的情况下，屏幕的左右两侧会像地质断层一样上下割裂错位。我尝试了 Arch Linux 和 Ubuntu 24 到 19 的版本，皆会出现上述的情况。只有 Kubuntu 18.04 这个版本才能正常显示
+好吧，如果你只是想用这台机器装一个可以使用的 Linux 系统的话，目前我已知最简单的方式，安装 Kubuntu 18.04 吧
+后面有佬做到了在这台设备上安装 Arch Linux，并且详细讲述了后续的安装流程，我跟着他的说明成功安装。所以，如果是要在日常中使用的话，就没有必要将时间花在这篇老古董身上了
+1. 系统设置 Hardware -&gt; Display and Monitor -&gt; 将窗口拉大后可以看到 Scale Display -&gt; 滑动 Scale 调整至 1.7 或 1.8
+Power Management -&gt; Energy Saving -&gt; 自行设置（设备默认省电方案可能会导致系统卡死的情况出现）
+如果不小心删除了底部面板：右键桌面 -&gt; Add Panel -&gt; Kubuntu Default Panel"/>
+
+
+
+    <meta property="og:title" content="在 Matebook E 2022 上安装 Kubuntu18.04" />
+<meta property="og:description" content="0. 在开始之前 P.S. 这篇博客的内容已过时
+这篇博客不牵涉启动盘的制作，磁盘分区以及系统安装的过程（这些内容你大可以 STFW，网络上有很多更加成熟的教程），目的更多在于方便本人重装之后能够快速上手，故而本文的内容比较杂，包括针对该设备的系统设置，常用工具的安装以及简单的美化
+在 Matebook E 2022 这台设备上安装 Linux 时会遇到显卡驱动的问题，可以看看这个帖子：Huawei Matebook e 2022 款 Iris Xe 显卡问题。对于我这台机子，在不开安全模式的情况下，屏幕的左右两侧会像地质断层一样上下割裂错位。我尝试了 Arch Linux 和 Ubuntu 24 到 19 的版本，皆会出现上述的情况。只有 Kubuntu 18.04 这个版本才能正常显示
+好吧，如果你只是想用这台机器装一个可以使用的 Linux 系统的话，目前我已知最简单的方式，安装 Kubuntu 18.04 吧
+后面有佬做到了在这台设备上安装 Arch Linux，并且详细讲述了后续的安装流程，我跟着他的说明成功安装。所以，如果是要在日常中使用的话，就没有必要将时间花在这篇老古董身上了
+1. 系统设置 Hardware -&gt; Display and Monitor -&gt; 将窗口拉大后可以看到 Scale Display -&gt; 滑动 Scale 调整至 1.7 或 1.8
+Power Management -&gt; Energy Saving -&gt; 自行设置（设备默认省电方案可能会导致系统卡死的情况出现）
+如果不小心删除了底部面板：右键桌面 -&gt; Add Panel -&gt; Kubuntu Default Panel" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://whaleblog.github.io/posts/%E5%A6%82%E6%9E%9C%E4%BD%A0%E6%83%B3%E5%9C%A8&#43;matebook&#43;e&#43;2022&#43;%E4%B8%8A%E4%BD%BF%E7%94%A8&#43;linux/" /><meta property="og:image" content="https://whaleblog.github.io/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2024-07-06T16:26:00+00:00" />
+<meta property="article:modified_time" content="2024-07-06T16:26:00+00:00" />
+
+
+
+
+
+    <meta property="article:section" content="notes" />
+
+
+
+    <meta property="article:published_time" content="2024-07-06 16:26:00 &#43;0000 UTC" />
+
+
+
+
+
+
+
+
+
+
+
+
+    </head>
+
+    
+        <body>
+    
+    
+        <div class="container">
+            <header class="header">
+    <span class="header__inner">
+        <a href="/" style="text-decoration: none;">
+    <div class="logo">
+        
+            <span class="logo__mark">></span>
+            <span class="logo__text ">
+                WhaleFall</span>
+            <span class="logo__cursor" style=
+                  "
+                   
+                   ">
+            </span>
+        
+    </div>
+</a>
+
+
+        <span class="header__right">
+                <nav class="menu">
+    <ul class="menu__inner"><li><a href="/about">About</a></li><li><a href="/posts">Blog</a></li><li><a href="/tags">Tags</a></li>
+    </ul>
+</nav>
+
+                <span class="menu-trigger">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                    </svg>
+                </span>
+        </span>
+    </span>
+</header>
+
+
+            <div class="content">
+                
+  <main class="post">
+
+    <div class="post-info">
+      <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        2分钟阅读
+
+        
+      </p>
+    </div>
+
+    <article>
+      <h1 class="post-title">
+        <a href="https://whaleblog.github.io/posts/%E5%A6%82%E6%9E%9C%E4%BD%A0%E6%83%B3%E5%9C%A8&#43;matebook&#43;e&#43;2022&#43;%E4%B8%8A%E4%BD%BF%E7%94%A8&#43;linux/">在 Matebook E 2022 上安装 Kubuntu18.04</a>
+      </h1>
+
+      
+
+      
+
+      
+
+      <div class="post-content">
+        <h2 id="0-在开始之前">0. 在开始之前</h2>
+<p><strong>P.S. 这篇博客的内容已过时</strong></p>
+<p>这篇博客不牵涉启动盘的制作，磁盘分区以及系统安装的过程（这些内容你大可以 STFW，网络上有很多更加成熟的教程），目的更多在于方便本人重装之后能够快速上手，故而本文的内容比较杂，包括针对该设备的系统设置，常用工具的安装以及简单的美化</p>
+<p>在 Matebook E 2022 这台设备上安装 Linux 时会遇到显卡驱动的问题，可以看看这个帖子：<a href="https://bbs.archlinuxcn.org/viewtopic.php?id=12223">Huawei Matebook e 2022 款 Iris Xe 显卡问题</a>。对于我这台机子，在不开安全模式的情况下，屏幕的左右两侧会像地质断层一样上下割裂错位。我尝试了 Arch Linux 和 Ubuntu 24 到 19 的版本，皆会出现上述的情况。<del>只有 Kubuntu 18.04 这个版本才能正常显示</del></p>
+<p><del>好吧，如果你只是想用这台机器装一个可以使用的 Linux 系统的话，目前我已知最简单的方式，安装 <a href="https://mirrors.nju.edu.cn/ubuntu-cdimage/kubuntu/releases/18.04/">Kubuntu 18.04</a> 吧</del></p>
+<p>后面有佬做到了在这台设备上<a href="https://www.cnblogs.com/Vanilla-chan/p/18365339/Huawei-Matebook-e-2022-install-archlinux-double-system">安装 Arch Linux</a>，并且详细讲述了后续的安装流程，我跟着他的说明成功安装。所以，如果是要在日常中使用的话，就没有必要将时间花在这篇老古董身上了</p>
+<h2 id="1-系统设置">1. 系统设置</h2>
+<p>Hardware -&gt; Display and Monitor -&gt; 将窗口拉大后可以看到 Scale Display -&gt; 滑动 Scale 调整至 1.7 或 1.8</p>
+<p>Power Management -&gt; Energy Saving -&gt; 自行设置（设备默认省电方案可能会导致系统卡死的情况出现）</p>
+<p>如果不小心删除了底部面板：右键桌面 -&gt; Add Panel -&gt; Kubuntu Default Panel</p>
+<h3 id="11-声卡问题">1.1 声卡问题</h3>
+<p>刚安装好系统后是没有声音的。可以按照这篇博客做：<a href="https://zhuanlan.zhihu.com/p/122887848">UBUNTU 声卡提示 Dummy Output 或伪输出解决办法</a></p>
+<p>多重启几次之后才会有效</p>
+<h2 id="2-常用工具的安装">2. 常用工具的安装</h2>
+<h3 id="21-换源">2.1 换源</h3>
+<pre><code>cd /etc/apt
+sudo cp sources.list sources.list.bak
+sudo vi sources.list
+</code></pre>
+<p><a href="https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu/">清华源 for Ubuntu 18.04</a></p>
+<pre><code># 默认注释了源码镜像以提高 apt update 速度，如有需要可自行取消注释
+deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic main restricted universe multiverse
+# deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic main restricted universe multiverse
+deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-updates main restricted universe multiverse
+# deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-updates main restricted universe multiverse
+deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-backports main restricted universe multiverse
+# deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-backports main restricted universe multiverse
+​
+# 以下安全更新软件源包含了官方源与镜像站配置，如有需要可自行修改注释切换
+deb http://security.ubuntu.com/ubuntu/ bionic-security main restricted universe multiverse
+# deb-src http://security.ubuntu.com/ubuntu/ bionic-security main restricted universe multiverse
+​
+# 预发布软件源，不建议启用
+# deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-proposed main restricted universe multiverse
+# # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-proposed main restricted universe multiverse
+</code></pre>
+<p>然后输入</p>
+<pre><code>sudo apt update
+sudo apt upgrade
+</code></pre>
+<h3 id="22-中文输入法">2.2 中文输入法</h3>
+<p>在系统设置内进入区域设置，选择语言，将“简体中文”移至 Preferred Language，重启后系统语言变为中文</p>
+<p>接着参考 <a href="https://blog.csdn.net/Graceying/article/details/118117245">kubuntu18.04 安装搜狗输入法</a></p>
+<h3 id="23-科学上网工具">2.3 科学上网工具</h3>
+<p>参考这两篇博客：</p>
+<p><a href="https://opclash.com/article/302.html">Ubuntu 使用 Clash For Linux 客户端教程</a></p>
+<p>如果 MMDB 无法下载，可以从 Clash for Windows 里面拿，然后拷贝到 ~/.config/clash 里面</p>
+<p><a href="https://opclash.com/article/139.html">Linux 系统使用 ShadowSocksR 客户端教程</a></p>
+<h3 id="24-基础工具">2.4 基础工具</h3>
+<p>包括美化部分，我为我自己的配置建立了 git 仓库：</p>
+<p><a href="https://github.com/WhaleFall-UESTC/Config">https://github.com/WhaleFall-UESTC/Config</a></p>
+<pre><code>sudo apt-get install build-essential
+sudo apt-get install man
+sudo apt-get install gcc-doc
+sudo apt-get install gdb
+sudo apt-get install git
+sudo apt-get insatll vim
+sudo apt-get insatll tmux
+sudo apt-get insatll ccache
+sudo apt-get insatll make
+sudo apt-get insatll curl
+sudo apt-get insatll neofetch
+sudo snap install code --classic
+
+git config --global user.name &quot;xxxxxxxx&quot;
+git config --global user.email &quot;xxxxxxxxx@xx.xxx&quot;
+git config --global core.editor vim
+git config --global color.ui true
+</code></pre>
+<p><a href="https://missing.csail.mit.edu/2020/files/vimrc">这里</a>是 <a href="https://missing.csail.mit.edu/2020/editors/">MIT Missing Semester</a> 里面提供的 .vimrc</p>
+<p>tmux.conf 可以参考 <a href="https://hamvocke.com/blog/a-guide-to-customizing-your-tmux-conf/">MAKE TMUX PRETTY AND USABLE - A GUIDE TO CUSTOM­IZING YOUR TMUX.CONF</a></p>
+<p>fd 下载 <a href="https://github.com/sharkdp/fd/releases">https://github.com/sharkdp/fd/releases</a> 里面对应版本即可</p>
+<h2 id="3-简单的美化">3. 简单的美化</h2>
+<p>系统设置 -&gt; 工作空间主题 -&gt; Get New Look，然后按照评分排序，选一个喜欢的下载</p>
+<p>终端美化参考这两篇博客：</p>
+<p><a href="https://blog.imfing.com/2020/06/ubuntu-18-04-theme-terminal-setup/">Ubuntu 美化与终端配置</a></p>
+<p><a href="https://blog.csdn.net/ruipeng_liu/article/details/129701000">ubuntu 终端美化之 zsh/oh-my-zsh</a></p>
+<pre><code># 安装 zsh
+sudo apt install zsh
+# 确认 zsh 成功安装
+which zsh
+# 设置为默认 Shell
+chsh -s /usr/bin/zsh
+
+# 克隆项目到“~/”位置
+git clone https://github.com/robbyrussell/oh-my-zsh.git ~/.oh-my-zsh
+# 将配置文件复制到指定位置
+cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc
+
+# 下载主题 Powerlevel10k
+git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/themes/powerlevel10k
+# 下载插件
+git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+</code></pre>
+<p>接着在 ~/.zshrc 中设置 ZSH_THEME=&ldquo;powerlevel10k/powerlevel10k&rdquo;，plugins=(git zsh-autosuggestions zsh-syntax-highlighting)，重启终端后即可查看到效果。</p>
+<p>还需要在 Konsole 内部将默认的 Shell 从 /bin/bash 改为 /usr/bin/zsh，并将透明度修改为 75%</p>
+
+      </div>
+    </article>
+
+    <hr />
+
+    <div class="post-info">
+      
+    <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg>
+
+        <span class="tag"><a href="https://whaleblog.github.io/tags/linux/">linux</a></span>
+        
+    </p>
+
+      
+    <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-folder meta-icon"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+
+        <span class="tag"><a href="https://whaleblog.github.io/categories/notes/">notes</a></span>
+        
+    </p>
+
+
+      <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+        400字
+      </p>
+
+      <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        
+          2024-07-07 00:26
+        
+
+         
+          
+        
+      </p>
+    </div>
+      <hr />
+      <div class="sharing-buttons">
+        
+
+  
+    
+    
+  
+
+
+
+
+  
+      
+        
+    
+  
+
+
+
+
+  
+    
+      
+    
+  
+
+
+
+
+  
+    
+    
+  
+
+
+
+
+  
+    
+    
+  
+
+
+
+
+  
+    
+    
+  
+
+
+
+
+  
+    
+    
+  
+
+
+
+
+  
+    
+    
+  
+
+
+
+
+  
+    
+    
+  
+
+
+
+
+  
+			
+    
+  
+
+
+
+
+  
+      
+    
+  
+
+
+<style>
+.social-icons {
+  display: flex;
+  align-items: center;
+  gap: 20px;  
+  margin-top: 15px;
+}
+.social-icons a svg {
+  width: 20px;  
+  height: 20px;
+}
+</style>
+
+<div class="social-icons">
+  
+  <a href="mailto:166845494@qq.com" target="_self" rel="noopener" aria-label="Email me" title="Email me">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+      <polyline points="22,6 12,13 2,6"></polyline>
+    </svg>
+  </a>
+
+  
+  <a href="https://github.com/WhaleFall-UESTC" target="_blank" rel="noopener" aria-label="Follow on GitHub" title="Follow on GitHub">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke-width="2">
+      <path d="M12 0C5.373 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.298 24 12c0-6.627-5.373-12-12-12z"/>
+    </svg>
+  </a>
+</div>
+
+      </div>
+
+    
+    <div class="pagination">
+        
+        <div class="pagination__title">
+            <span class="pagination__title-h">浏览其他文章</span>
+            <hr />
+        </div>
+        
+
+        <div class="pagination__buttons">
+            
+            <span class="button previous">
+                <a href="https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;disjoint&#43;sets/">
+                    <span class="button__icon">←</span>
+                    <span class="button__text">CS61B 学习笔记 - Disjoint Sets</span>
+                </a>
+            </span>
+            
+
+            
+        </div>
+    </div>
+
+
+    
+
+    
+
+    
+
+  </main>
+
+            </div>
+
+            
+                <footer class="footer">
+    
+    
+</footer>
+
+            
+        </div>
+
+        
+
+
+
+<script type="text/javascript" src="/bundle.min.ac2a4bcaed631ec2dc154407be7f09fc28da37de71fae6dee6711b2a3d1622770f87d3cda22c460e9a68ff619bdb1dd75cb7a5d33f159a54e419736cc4541087.js" integrity="sha512-rCpLyu1jHsLcFUQHvn8J/CjaN95x&#43;ube5nEbKj0WIncPh9PNoixGDppo/2Gb2x3XXLel0z8VmlTkGXNsxFQQhw=="></script>
+
+
+
+
+    </body>
+</html>

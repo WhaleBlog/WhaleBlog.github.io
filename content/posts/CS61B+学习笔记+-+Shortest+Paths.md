@@ -11,32 +11,33 @@ categories:
  - courses
 tags: 
  - cs61b
+ - data structure
 ---
 
 ## Dijkstra's Algorithm
 
 还是贴伪代码
-
-    def dijkstras(source):
-        # 初始化最小优先队列，存储节点与该节点到起点的最短距离
-        # 设置起点距离为 0，其他节点距离无限
-        PQ.add(source, 0) 
-        For all other vertices, v, PQ.add(v, infinity)
-        while PQ is not empty:
-            # 出队剩余未操作节点中距离最短的节点
-            p = PQ.removeSmallest()
-            relax(all edges from p)
+```Python
+def dijkstras(source):
+    # 初始化最小优先队列，存储节点与该节点到起点的最短距离
+    # 设置起点距离为 0，其他节点距离无限
+    PQ.add(source, 0) 
+    For all other vertices, v, PQ.add(v, infinity)
+    while PQ is not empty:
+        # 出队剩余未操作节点中距离最短的节点
+        p = PQ.removeSmallest()
+        relax(all edges from p)
     
-    def relax(edge p,q):
-       if q is visited (i.e., q is not in PQ):
-           return
+def relax(edge p,q):
+    if q is visited (i.e., q is not in PQ):
+       return
         
-       # 若是新路径的距离更短，更新
-       if distTo[p] + weight(edge) < distTo[q]:
-           distTo[q] = distTo[p] + w
-           edgeTo[q] = p
-           PQ.changePriority(q, distTo[q])
-    
+    # 若是新路径的距离更短，更新
+    if distTo[p] + weight(edge) < distTo[q]:
+       distTo[q] = distTo[p] + w
+       edgeTo[q] = p
+       PQ.changePriority(q, distTo[q])
+```
 
 在图中存在负边的情况下，Dijkstra 算法不能保证正确。这可能有用……但这并不能保证有效。
 
@@ -57,8 +58,8 @@ Dijkstra 算法其实像是以起点为中心，向四面八方进行地毯式�
 1.  `heuristic(v, target)` 必须小于等于 v 到 target 的真实距离
     
 2.  对于 v 的每个邻居 w:
-    
-        heuristic(v, target) <= dist(v, w) + heuristic(w, target)
-        
+```Python
+heuristic(v, target) <= dist(v, w) + heuristic(w, target)
+```
     
     我们姑且把`heuristic(v, target)`认为是 v 到 target 的估计距离吧，上面这句话的意思便是，**v到target的估计距离 不得大于 v到w的距离 与 w到target的估计距离 之和**

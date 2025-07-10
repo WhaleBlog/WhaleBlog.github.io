@@ -11,6 +11,7 @@ categories:
  - courses
 tags: 
  - mit-6.s081
+ - OS
 ---
 
 Meltdown 是一种利用了 CPU 预测执行的攻击手段。如它的名字一样，它”溶解“了用户空间与内核空间的隔离性。详细内容可以访问 [https://meltdownattack.com](https://meltdownattack.com) 查看

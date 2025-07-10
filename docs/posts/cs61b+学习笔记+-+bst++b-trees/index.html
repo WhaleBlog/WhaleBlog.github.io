@@ -17,7 +17,7 @@ Binary Search Tree 除了上述所有要求外，还满足以下性质：
 2. BST Operations find 得益于二叉搜索树的特性，我们可以很简单地使用二分查找
 static BST find(BST T, Key sk) { if (T == null) return null; if (sk.equals(T.key)) return T; else if (sk ≺ T.key) return find(T.left, sk); else return find(T.right, sk); } insert 只需注意在插入时也保持左边小，右边大的特性就行
 static BST insert(BST T, Key ik) { if (T == null) return new BST(ik); if (ik ≺ T." />
-<meta name="keywords" content=", cs61b" />
+<meta name="keywords" content=", cs61b, data structure" />
 <meta name="robots" content="noodp" />
 <meta name="theme-color" content="" />
 <link rel="canonical" href="https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;bst&#43;&#43;b-trees/" />
@@ -62,7 +62,7 @@ static BST find(BST T, Key sk) { if (T == null) return null; if (sk.equals(T.key
 static BST insert(BST T, Key ik) { if (T == null) return new BST(ik); if (ik ≺ T."><meta itemprop="datePublished" content="2024-07-30T07:55:29+00:00" />
 <meta itemprop="dateModified" content="2024-07-30T07:55:29+00:00" />
 <meta itemprop="wordCount" content="158"><meta itemprop="image" content="https://whaleblog.github.io/" />
-<meta itemprop="keywords" content="cs61b," />
+<meta itemprop="keywords" content="cs61b,data structure," />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://whaleblog.github.io/" /><meta name="twitter:title" content="CS61B 学习笔记 - BST &amp; B-Trees"/>
 <meta name="twitter:description" content="我们都知道，二分搜索，比起一个一个查找，有着非常优秀的运行时间。但是对于一个单向链表，这种算法似乎就束手无策了。
@@ -206,30 +206,28 @@ static BST insert(BST T, Key ik) { if (T == null) return new BST(ik); if (ik ≺
 <h2 id="2-bst-operations">2. BST Operations</h2>
 <h3 id="find">find</h3>
 <p>得益于二叉搜索树的特性，我们可以很简单地使用二分查找</p>
-<pre><code>static BST find(BST T, Key sk) {
-   if (T == null)
-      return null;
-   if (sk.equals(T.key))
-      return T;
-   else if (sk ≺ T.key)
-      return find(T.left, sk);
-   else
-      return find(T.right, sk);
-}
-</code></pre>
-<h3 id="insert">insert</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#66d9ef">static</span> BST <span style="color:#a6e22e">find</span>(BST T, Key sk) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (T <span style="color:#f92672">==</span> <span style="color:#66d9ef">null</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">null</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (sk.<span style="color:#a6e22e">equals</span>(T.<span style="color:#a6e22e">key</span>))
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> T;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> (sk <span style="color:#960050;background-color:#1e0010">≺</span> T.<span style="color:#a6e22e">key</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> find(T.<span style="color:#a6e22e">left</span>, sk);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">else</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> find(T.<span style="color:#a6e22e">right</span>, sk);
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="insert">insert</h3>
 <p>只需注意在插入时也保持左边小，右边大的特性就行</p>
-<pre><code>static BST insert(BST T, Key ik) {
-  if (T == null)
-    return new BST(ik);
-  if (ik ≺ T.key)
-    T.left = insert(T.left, ik);
-  else if (ik ≻ T.key)
-    T.right = insert(T.right, ik);
-  return T;
-}
-</code></pre>
-<h3 id="delete">delete</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#66d9ef">static</span> BST <span style="color:#a6e22e">insert</span>(BST T, Key ik) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (T <span style="color:#f92672">==</span> <span style="color:#66d9ef">null</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">new</span> BST(ik);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (ik <span style="color:#960050;background-color:#1e0010">≺</span> T.<span style="color:#a6e22e">key</span>)
+</span></span><span style="display:flex;"><span>        T.<span style="color:#a6e22e">left</span> <span style="color:#f92672">=</span> insert(T.<span style="color:#a6e22e">left</span>, ik);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> (ik <span style="color:#960050;background-color:#1e0010">≻</span> T.<span style="color:#a6e22e">key</span>)
+</span></span><span style="display:flex;"><span>        T.<span style="color:#a6e22e">right</span> <span style="color:#f92672">=</span> insert(T.<span style="color:#a6e22e">right</span>, ik);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> T;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="delete">delete</h3>
 <p>删除操作的话则需更具被删除节点的子节点数分情况讨论：</p>
 <p>0 个子节点：直接删除，相信 Java 的垃圾收集</p>
 <p>1 个子节点：直接将子节点替上</p>
@@ -278,6 +276,7 @@ static BST insert(BST T, Key ik) { if (T == null) return new BST(ik); if (ik ≺
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg>
 
         <span class="tag"><a href="https://whaleblog.github.io/tags/cs61b/">cs61b</a></span>
+        <span class="tag"><a href="https://whaleblog.github.io/tags/data-structure/">data structure</a></span>
         
     </p>
 

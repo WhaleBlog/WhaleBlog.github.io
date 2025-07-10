@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Cs61b on WhaleFall&#39;s Blog</title>
-    <link>https://whaleblog.github.io/tags/cs61b/</link>
-    <description>Recent content in Cs61b on WhaleFall&#39;s Blog</description>
+    <title>Data Structure on WhaleFall&#39;s Blog</title>
+    <link>https://whaleblog.github.io/tags/data-structure/</link>
+    <description>Recent content in Data Structure on WhaleFall&#39;s Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh</language>
     <copyright>&lt;a href=&#34;https://creativecommons.org/licenses/by-nc/4.0/&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;CC BY-NC 4.0&lt;/a&gt;</copyright>
     <lastBuildDate>Tue, 30 Jul 2024 17:57:06 +0000</lastBuildDate>
-    <atom:link href="https://whaleblog.github.io/tags/cs61b/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://whaleblog.github.io/tags/data-structure/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>CS61B 学习笔记 - Quicksort</title>
       <link>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;quicksort/</link>

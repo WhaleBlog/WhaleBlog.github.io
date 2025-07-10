@@ -12,6 +12,7 @@ categories:
 tags: 
  - mit-6.s081
  - xv6
+ - OS
 ---
 
 ## 页表

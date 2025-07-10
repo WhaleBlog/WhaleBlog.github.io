@@ -11,6 +11,7 @@ categories:
  - courses
 tags: 
  - cs61b
+ - data structure
 ---
 
 我们都知道，二分搜索，比起一个一个查找，有着非常优秀的运行时间。但是对于一个单向链表，这种算法似乎就束手无策了。
@@ -50,33 +51,33 @@ tags:
 ### find
 
 得益于二叉搜索树的特性，我们可以很简单地使用二分查找
-
-    static BST find(BST T, Key sk) {
-       if (T == null)
-          return null;
-       if (sk.equals(T.key))
-          return T;
-       else if (sk ≺ T.key)
-          return find(T.left, sk);
-       else
-          return find(T.right, sk);
-    }
-    
+```Java
+static BST find(BST T, Key sk) {
+    if (T == null)
+        return null;
+    if (sk.equals(T.key))
+        return T;
+    else if (sk ≺ T.key)
+        return find(T.left, sk);
+    else
+        return find(T.right, sk);
+}
+```   
 
 ### insert
 
 只需注意在插入时也保持左边小，右边大的特性就行
-
-    static BST insert(BST T, Key ik) {
-      if (T == null)
+```Java
+static BST insert(BST T, Key ik) {
+    if (T == null)
         return new BST(ik);
-      if (ik ≺ T.key)
+    if (ik ≺ T.key)
         T.left = insert(T.left, ik);
-      else if (ik ≻ T.key)
+    else if (ik ≻ T.key)
         T.right = insert(T.right, ik);
-      return T;
-    }
-    
+    return T;
+}
+```   
 
 ### delete
 

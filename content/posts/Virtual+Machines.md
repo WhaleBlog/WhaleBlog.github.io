@@ -11,6 +11,7 @@ categories:
  - courses
 tags: 
  - mit-6.s081
+ - OS
 ---
 
 ## Host & Guest

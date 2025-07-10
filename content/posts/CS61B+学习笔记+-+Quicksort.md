@@ -11,6 +11,7 @@ categories:
  - courses
 tags: 
  - cs61b
+ - data structure
 ---
 
 多年以后，在面对图灵奖时，Tony Hoare 仍会记得一个新手程序员尝试对单词列表进行排序的那个下午（）

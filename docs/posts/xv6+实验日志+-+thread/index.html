@@ -28,7 +28,7 @@ xv6 线程调度 用户进程切换流程 从一个用户进程切换到另一�
 状态保存位置 用户进程状态保存在 trapframe，内核线程状态保存在 proc 的 context，调度线程的状态保存在 cpu 的 context
 现在，我们可以重新看看这几个熟悉的结构体了：
 struct cpu { struct proc *proc; // The process running on this cpu, or null." />
-<meta name="keywords" content=", mit-6.s081, xv6" />
+<meta name="keywords" content=", mit-6.s081, xv6, OS" />
 <meta name="robots" content="noodp" />
 <meta name="theme-color" content="" />
 <link rel="canonical" href="https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;thread/" />
@@ -84,7 +84,7 @@ xv6 线程调度 用户进程切换流程 从一个用户进程切换到另一�
 struct cpu { struct proc *proc; // The process running on this cpu, or null."><meta itemprop="datePublished" content="2024-08-20T16:35:21+00:00" />
 <meta itemprop="dateModified" content="2024-08-20T16:35:21+00:00" />
 <meta itemprop="wordCount" content="577"><meta itemprop="image" content="https://whaleblog.github.io/" />
-<meta itemprop="keywords" content="mit-6.s081,xv6," />
+<meta itemprop="keywords" content="mit-6.s081,xv6,OS," />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://whaleblog.github.io/" /><meta name="twitter:title" content="xv6 实验日志 - Thread"/>
 <meta name="twitter:description" content="在 xv6 中，我们认为线程就是单个串行执行代码的单元，它只占用一个CPU并且以普通的方式一个接一个的执行指令
@@ -431,6 +431,7 @@ struct cpu { struct proc *proc; // The process running on this cpu, or null." />
 
         <span class="tag"><a href="https://whaleblog.github.io/tags/mit-6.s081/">mit-6.s081</a></span>
         <span class="tag"><a href="https://whaleblog.github.io/tags/xv6/">xv6</a></span>
+        <span class="tag"><a href="https://whaleblog.github.io/tags/os/">OS</a></span>
         
     </p>
 

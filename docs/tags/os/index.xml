@@ -1,35 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>WhaleFall&#39;s Blog</title>
-    <link>https://whaleblog.github.io/</link>
-    <description>Recent content on WhaleFall&#39;s Blog</description>
+    <title>OS on WhaleFall&#39;s Blog</title>
+    <link>https://whaleblog.github.io/tags/os/</link>
+    <description>Recent content in OS on WhaleFall&#39;s Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh</language>
     <copyright>&lt;a href=&#34;https://creativecommons.org/licenses/by-nc/4.0/&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;CC BY-NC 4.0&lt;/a&gt;</copyright>
-    <lastBuildDate>Mon, 07 Jul 2025 15:26:05 +0800</lastBuildDate>
-    <atom:link href="https://whaleblog.github.io/index.xml" rel="self" type="application/rss+xml" />
-    <item>
-      <title>About</title>
-      <link>https://whaleblog.github.io/about/</link>
-      <pubDate>Mon, 07 Jul 2025 15:26:05 +0800</pubDate>
-      <guid>https://whaleblog.github.io/about/</guid>
-      <description>我是 WhaleFall，一个计科专业普通的本科生&#xA;虽然说不上有写博客的习惯，但是在完成什么事情之后大概会抽时间记录吧&#xA;内容以技术博客为主，形式像是笔记一类。虽然我提笔的时候更多是在写最近的感想，但是那些碎碎念就还是不要公之于众了&#xA;ID 以及头像来自于某张专辑。签名来自于一句歌词 “Do not cry, I am just a freak&amp;quot;（当然，鲸鱼不是鱼）&#xA;希望你能够在这里找到一些有用的东西</description>
-    </item>
-    <item>
-      <title>My First Post</title>
-      <link>https://whaleblog.github.io/posts/my-first-post/</link>
-      <pubDate>Sun, 06 Jul 2025 22:08:26 +0800</pubDate>
-      <guid>https://whaleblog.github.io/posts/my-first-post/</guid>
-      <description>这是我的第一篇 Hugo 博客</description>
-    </item>
-    <item>
-      <title>Performance Analysis and Tuning on Morden CPUs</title>
-      <link>https://whaleblog.github.io/posts/performance&#43;analysis&#43;and&#43;tuning&#43;on&#43;morden&#43;cpus/</link>
-      <pubDate>Sat, 07 Dec 2024 01:46:33 +0000</pubDate>
-      <guid>https://whaleblog.github.io/posts/performance&#43;analysis&#43;and&#43;tuning&#43;on&#43;morden&#43;cpus/</guid>
-      <description>写得有点乱&amp;hellip;&amp;hellip;等有经验之后再来优化一下吧</description>
-    </item>
+    <lastBuildDate>Sun, 01 Sep 2024 13:42:00 +0000</lastBuildDate>
+    <atom:link href="https://whaleblog.github.io/tags/os/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Virtual Machines</title>
       <link>https://whaleblog.github.io/posts/virtual&#43;machines/</link>
@@ -92,69 +71,6 @@
       <pubDate>Wed, 14 Aug 2024 20:28:07 +0000</pubDate>
       <guid>https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;trap/</guid>
       <description>今天在看系统调用的时候发现自己把 xv6 的内存映射的约定给忘了。因为害怕后续做实验的时候会把前面花了不少时间才弄明白的机制遗忘，所以决定简单记录一下&#xA;今天看的是陷阱，目前只讨论从用户态陷入内核态的流程。我对源代码进行了注释，但是放在了 pgtbl 分支下，不方便以后做实验看，便就贴在这了&#xA;关于课程，有佬做了中文精翻：Trap 机制，阅读体验极佳&#xA;0. 一些前置知识 STVEC（Supervisor Trap Vector Base Address Register）寄存器，它指向了内核中处理 trap 的指令的起始地址&#xA;SEPC（Supervisor Exception Program Counter）寄存器，在trap的过程中保存程序计数器的值&#xA;SSRATCH（Supervisor Scratch Register）寄存器，有点像临时寄存器&#xA;SATP（Supervisor Address Translation and Protection）寄存器，它包含了指向page table的物理内存地址&#xA;ecall 指令会做如下 3 件事：&#xA;从 user mode 切到 supervisor mode&#xA;将程序计数器的值保存在了 SEPC&#xA;跳转到 STVEC 寄存器指向的指令&#xA;sret 指令会做：&#xA;程序会切换回 user mode&#xA;SEPC 的值会被拷贝到 PC&#xA;重新打开中断&#xA;supervisor mode 并不那么特权，在这个模式下只能做两件事情：&#xA;访问控制寄存器&#xA;对 PTE_U = 0 的页进行操作（也就是说不能操作 PTE_U = 1 的页，不能直接访问物理地址）&#xA;trampoline 在 用户空间与内核空间会被映射在相同的虚拟地址，说明书中给出的原因是：</description>
-    </item>
-    <item>
-      <title>CS61B 学习笔记 - Quicksort</title>
-      <link>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;quicksort/</link>
-      <pubDate>Tue, 30 Jul 2024 17:57:06 +0000</pubDate>
-      <guid>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;quicksort/</guid>
-      <description>多年以后，在面对图灵奖时，Tony Hoare 仍会记得一个新手程序员尝试对单词列表进行排序的那个下午（）&#xA;另外，这节课的讲师换人了，是他的 secret ruler twin brother&#xA;Quicksort 快速排序的想法其实非常简单：选择，分区，然后递归&#xA;选择一个元素作为 pivot，一般选择最左边第一个元素&#xA;小于等于 pivot 的放在 pivot 的左边，大于 pivot 的放在 pivot 的右边，这样一来 pivot 的位置就确定了&#xA;递归地对 pivot 的左边 Quicksort&#xA;递归地对 pivot 的右边 Quicksort&#xA;快速排序的演示链接在这里&#xA;Tony Hoare 将其命名为 Quicksort，而且直到现在，在大多数情况下，快速排序仍然是最快的算法&#xA;快速排序的最佳运行时间是 Θ(NlogN)。分区用时 Θ(N)，有 Θ(logN) 层&#xA;但是排序一个已经排好的数列，就会触发最坏运行时间 Θ(N2)&#xA;但是现实中除非故意为之，几乎不可能遇到这种情况：第一次选择 pivot 便是数组中的最大/最小值概论较小，但并非不可能，不过连续几十次几千次都是如此就几乎不可能出现了。因此，快速排序的时间复杂度往往是 Θ(NlogN)，且一般在 ~2N lnN 次比较后可以完成&#xA;下面这张图是对 N = 1000 的数组进行快速排序所需操作次数的分布情况。至于 Θ(N2)，106 都不在图上&#xA;虽然快速排序与归并排序都是 O(NlogN)，但是快速排序往往比归并排序要快。（这可能是由于缓存，页命中等更加底层的东西决定的，没有细讲）&#xA;Quicksort Flavors 我们怎么做才能避免快速排序的最坏情况呢？那么就让我们来”定制化“一个快速排序吧，从 pivot 选择算法，Partition 算法，到 预处理算法，都有改进地空间。一下是一些改进的思路：&#xA;Philosophy 1: Randomness 最坏情况运行时的一些可能原因包括：</description>
-    </item>
-    <item>
-      <title>CS61B 学习笔记 - Basic Sort</title>
-      <link>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;basic&#43;sort/</link>
-      <pubDate>Tue, 30 Jul 2024 16:03:25 +0000</pubDate>
-      <guid>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;basic&#43;sort/</guid>
-      <description>In-place Insertion Sort 我们从数组的左边开始，每次选择一个元素进行交换。然后，我们将这个元素交换到它尽可能靠前的位置。数组的前端逐渐变得有序，直到整个数组都被排序。&#xA;在逆序数量较少的数组中，插入排序可能是最快的算法。另外，一个不太明显的经验是，插入排序在小数组（小于 15）上非常快，比快速排序与归并排序还快&#xA;Selection Sort 选择排序使用以下算法：找到最小的项。把这一项放到前面。重复直到所有项目都固定&#xA;在数组中 Θ(N2) 的复杂度真有人会用吗&amp;hellip;&amp;hellip;&#xA;Heapsort Naive Heapsort 我们可以另起一个堆，将所有的元素放入到这个堆中，再一个一个把最大值取出来&#xA;整体的运行时间是 Θ(NlogN)，毕竟无论是插入元素还是去除最小值都是 O(logN)&#xA;但是，为了另起一堆，我们又多花了 Θ(N) 的空间&#xA;In-place Heapsort 最大堆删除最大元素时，是将根元素与数组最末尾交换，然后sink(1) 并设置最末尾为 null&#xA;而我们完全可以将这最末位的空间利用起来，不通过设置 null 的方式删除原来堆中的最大值，而是就这样将其存在末尾（这也是为什么使用最大而不是最小堆）&#xA;我们最开始只要将数组“堆化”，然后以上述方法不断将最大值放在堆的最后，最终我们便得到一个排序好的数组&#xA;你可以在这里看到这个算法的演示&#xA;Merge Sort 有两个排序好的数组，如何将其合成一个排序好的数组：答案很简单，遍历两个数组，取二者最小，时间复杂度为两数组长度之和&#xA;要排序长度为 N 的数组，我们可以将其分成两个长度为 N / 2 的数组并对二者归并排序。N / 2 的数组又可以分成两个 N / 4 的数组，N / 4 又可以分成两个 N / 8&amp;hellip;&amp;hellip; 直到分成两个长度为 1 的数组&#xA;这样我们可以得到一颗高度为 Θ(logN) 的树，树的每一层都要进行 Θ(N) 次操作，时间复杂度为 O(NlogN)</description>
-    </item>
-    <item>
-      <title>CS61B 学习笔记 - MST</title>
-      <link>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;mst/</link>
-      <pubDate>Tue, 30 Jul 2024 14:57:27 +0000</pubDate>
-      <guid>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;mst/</guid>
-      <description>1. Minimum Spanning Trees A minimum spanning tree (MST) is the lightest set of edges in a graph possible such that all the vertices are connected. Because it is a tree, it must be connected and acyclic. And it is called &amp;ldquo;spanning&amp;rdquo; since all vertices are included.&#xA;最小生成树：连接图中所有节点，并使得连接的边和最小的树。&#xA;2. Cut Property 我们将一张图随便分为两个部分，一部分标为灰色，另一部分标为白色。&#xA;这张图里面一定存在一个最小生成树，这棵树将所有的灰球连接起来，同时将所有的白球连接起来，并且在灰色部分与白色部分的“桥梁”（那些一端是灰球，一端是白球的边）之中，一定有一个“桥梁”属于最小生成树。且这个“桥梁”一定是所有“桥梁”之中，最短的那一条。&#xA;这就是所谓的 cut property&#xA;We can define a cut as an assignment of a graph’s nodes to two non-empty sets (i.</description>
-    </item>
-    <item>
-      <title>CS61B 学习笔记 - Shortest Paths</title>
-      <link>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;shortest&#43;paths/</link>
-      <pubDate>Tue, 30 Jul 2024 12:30:43 +0000</pubDate>
-      <guid>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;shortest&#43;paths/</guid>
-      <description>Dijkstra&amp;rsquo;s Algorithm 还是贴伪代码&#xA;def dijkstras(source): # 初始化最小优先队列，存储节点与该节点到起点的最短距离 # 设置起点距离为 0，其他节点距离无限 PQ.add(source, 0) For all other vertices, v, PQ.add(v, infinity) while PQ is not empty: # 出队剩余未操作节点中距离最短的节点 p = PQ.removeSmallest() relax(all edges from p) def relax(edge p,q): if q is visited (i.e., q is not in PQ): return # 若是新路径的距离更短，更新 if distTo[p] + weight(edge) &amp;lt; distTo[q]: distTo[q] = distTo[p] + w edgeTo[q] = p PQ.changePriority(q, distTo[q]) 在图中存在负边的情况下，Dijkstra 算法不能保证正确。这可能有用……但这并不能保证有效。&#xA;A* Dijkstra 算法其实像是以起点为中心，向四面八方进行地毯式搜索。但假如我只是搜索武汉到北京的最短路径，我有必要搜索到西藏地区吗？</description>
-    </item>
-    <item>
-      <title>CS61B 学习笔记 - Heap &amp; MinPQ</title>
-      <link>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;heap&#43;&#43;minpq/</link>
-      <pubDate>Tue, 30 Jul 2024 10:08:41 +0000</pubDate>
-      <guid>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;heap&#43;&#43;minpq/</guid>
-      <description>1. Interface 以下是最小优先队列所需实现的方法。在这个数据结构中，我们只关心其最小值。&#xA;/** (Min) Priority Queue: Allowing tracking and removal of * the smallest item in a priority queue. */ public interface MinPQ&amp;lt;Item&amp;gt; { /** Adds the item to the priority queue. */ public void add(Item x); /** Returns the smallest item in the priority queue. */ public Item getSmallest(); /** Removes the smallest item from the priority queue. */ public Item removeSmallest(); /** Returns the size of the priority queue.</description>
-    </item>
-    <item>
-      <title>CS61B 学习笔记 - Hash Code</title>
-      <link>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;hash&#43;code/</link>
-      <pubDate>Tue, 30 Jul 2024 09:13:29 +0000</pubDate>
-      <guid>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;hash&#43;code/</guid>
-      <description>Valid Hashcodes 有效的哈希码必须拥有一下两个属性：&#xA;确定性（Deterministic）：如果两个对象A和B彼此相等（A.equals(B) == true），则它们的hashCode()函数返回相同的哈希码。这也意味着哈希函数不能依赖于在equals()方法中没有反映的对象属性。&#xA;比如我们有一个类Dog，其equals方法是：&#xA;@Override public boolean equals(Object other) { if (other == this) return true; if (other == null) return false; if (other.getClass() != this.getClass()) return false; Dog that = (Dog) other; return this.breed == that.breed; } 那么我们的`hashCode()`就不能依赖`breed`之外的属性了 另外，这也要求，**当我们重写**`hashCode()`**时，我们也必须同时重写**`equals()`，因为这是我们认为两个对象相等的唯一依据。 一致性（Consistent）：hashCode()函数在同一个对象实例上每次调用时都返回相同的整数。这意味着hashCode()函数必须独立于时间/秒表、随机数生成器或任何在同一个对象实例上多次调用hashCode()函数时不会给出一致哈希码的方法。&#xA;请注意，没有要求说不相等的对象应该有不同的哈希函数值，那怕每次只返回 -1，那也是一个有效的哈希码。&#xA;Good Hashcodes hashCode()函数必须是有效的。&#xA;hashCode()函数的值应该尽可能均匀地分布在整个整数集合上。&#xA;hashCode()函数的计算应该相对快速（理想情况下是O(1)的常量时间数学运算）。</description>
-    </item>
-    <item>
-      <title>CS61B 学习笔记 - BST &amp; B-Trees</title>
-      <link>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;bst&#43;&#43;b-trees/</link>
-      <pubDate>Tue, 30 Jul 2024 07:55:29 +0000</pubDate>
-      <guid>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;bst&#43;&#43;b-trees/</guid>
-      <description>我们都知道，二分搜索，比起一个一个查找，有着非常优秀的运行时间。但是对于一个单向链表，这种算法似乎就束手无策了。&#xA;但是，如果我们换种思路，从最开始如何形成这个“链表”，也就是数据结构下手的话&amp;hellip;&amp;hellip;二分查找不就没有问题了吗？&#xA;1. BST Definitions Tree 由节点和连接这些节点的边组成，任意两个节点之间只有一条路径&#xA;Binary Tree 除了上述要求外，还满足二叉属性约束。即，每个节点有0、1或2个子节点&#xA;Binary Search Tree 除了上述所有要求外，还满足以下性质：&#xA;对于树中的每个节点X：&#xA;左子树中的每个键都小于X的键&#xA;右子树中的每个键都大于X的键&#xA;2. BST Operations find 得益于二叉搜索树的特性，我们可以很简单地使用二分查找&#xA;static BST find(BST T, Key sk) { if (T == null) return null; if (sk.equals(T.key)) return T; else if (sk ≺ T.key) return find(T.left, sk); else return find(T.right, sk); } insert 只需注意在插入时也保持左边小，右边大的特性就行&#xA;static BST insert(BST T, Key ik) { if (T == null) return new BST(ik); if (ik ≺ T.</description>
-    </item>
-    <item>
-      <title>CS61B 学习笔记 - Disjoint Sets</title>
-      <link>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;disjoint&#43;sets/</link>
-      <pubDate>Mon, 29 Jul 2024 08:19:40 +0000</pubDate>
-      <guid>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;disjoint&#43;sets/</guid>
-      <description>1. Interface 对于 Disjoint Sets，我们定义如下接口：&#xA;public interface DisjointSets { /** connects two items P and Q */ void connect(int p, int q); /** checks to see if two items are connected */ boolean isConnected(int p, int q); } connect 方法会将两个整数归为同一个集合，isConnected 则用来判断两个整数是否为同一集合&#xA;例如，我们有四个元素 A，B，C，D&#xA;在调用connect(A, B) 后：&#xA;isConnected(A, B) -&amp;gt; true&#xA;isConnected(A, C) -&amp;gt; false&#xA;然后调用connect(A, D)：&#xA;于是有：&#xA;isConnected(A, D) -&amp;gt; true&#xA;isConnected(A, C) -&amp;gt; false&#xA;2. Implements 完整的实现请参照 WeightedQuickUnionUF&#xA;2.1 isConnected 我们使用parent数组来表示这样的不相交集。准确来说，使用数组来表示几颗棵树，处在同一棵树的元素，即拥有相同根节点的元素，属于同一个集合</description>
-    </item>
-    <item>
-      <title>在 Matebook E 2022 上安装 Kubuntu18.04</title>
-      <link>https://whaleblog.github.io/posts/%E5%A6%82%E6%9E%9C%E4%BD%A0%E6%83%B3%E5%9C%A8&#43;matebook&#43;e&#43;2022&#43;%E4%B8%8A%E4%BD%BF%E7%94%A8&#43;linux/</link>
-      <pubDate>Sat, 06 Jul 2024 16:26:00 +0000</pubDate>
-      <guid>https://whaleblog.github.io/posts/%E5%A6%82%E6%9E%9C%E4%BD%A0%E6%83%B3%E5%9C%A8&#43;matebook&#43;e&#43;2022&#43;%E4%B8%8A%E4%BD%BF%E7%94%A8&#43;linux/</guid>
-      <description>0. 在开始之前 P.S. 这篇博客的内容已过时&#xA;这篇博客不牵涉启动盘的制作，磁盘分区以及系统安装的过程（这些内容你大可以 STFW，网络上有很多更加成熟的教程），目的更多在于方便本人重装之后能够快速上手，故而本文的内容比较杂，包括针对该设备的系统设置，常用工具的安装以及简单的美化&#xA;在 Matebook E 2022 这台设备上安装 Linux 时会遇到显卡驱动的问题，可以看看这个帖子：Huawei Matebook e 2022 款 Iris Xe 显卡问题。对于我这台机子，在不开安全模式的情况下，屏幕的左右两侧会像地质断层一样上下割裂错位。我尝试了 Arch Linux 和 Ubuntu 24 到 19 的版本，皆会出现上述的情况。只有 Kubuntu 18.04 这个版本才能正常显示&#xA;好吧，如果你只是想用这台机器装一个可以使用的 Linux 系统的话，目前我已知最简单的方式，安装 Kubuntu 18.04 吧&#xA;后面有佬做到了在这台设备上安装 Arch Linux，并且详细讲述了后续的安装流程，我跟着他的说明成功安装。所以，如果是要在日常中使用的话，就没有必要将时间花在这篇老古董身上了&#xA;1. 系统设置 Hardware -&amp;gt; Display and Monitor -&amp;gt; 将窗口拉大后可以看到 Scale Display -&amp;gt; 滑动 Scale 调整至 1.7 或 1.8&#xA;Power Management -&amp;gt; Energy Saving -&amp;gt; 自行设置（设备默认省电方案可能会导致系统卡死的情况出现）&#xA;如果不小心删除了底部面板：右键桌面 -&amp;gt; Add Panel -&amp;gt; Kubuntu Default Panel</description>
     </item>
   </channel>
 </rss>

@@ -24,6 +24,13 @@
       <description></description>
     </item>
     <item>
+      <title>OS</title>
+      <link>https://whaleblog.github.io/tags/os/</link>
+      <pubDate>Sun, 01 Sep 2024 13:42:00 +0000</pubDate>
+      <guid>https://whaleblog.github.io/tags/os/</guid>
+      <description></description>
+    </item>
+    <item>
       <title>Xv6</title>
       <link>https://whaleblog.github.io/tags/xv6/</link>
       <pubDate>Thu, 22 Aug 2024 11:19:42 +0000</pubDate>
@@ -35,6 +42,20 @@
       <link>https://whaleblog.github.io/tags/cs61b/</link>
       <pubDate>Tue, 30 Jul 2024 17:57:06 +0000</pubDate>
       <guid>https://whaleblog.github.io/tags/cs61b/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Data Structure</title>
+      <link>https://whaleblog.github.io/tags/data-structure/</link>
+      <pubDate>Tue, 30 Jul 2024 17:57:06 +0000</pubDate>
+      <guid>https://whaleblog.github.io/tags/data-structure/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Linux</title>
+      <link>https://whaleblog.github.io/tags/linux/</link>
+      <pubDate>Sat, 06 Jul 2024 16:26:00 +0000</pubDate>
+      <guid>https://whaleblog.github.io/tags/linux/</guid>
       <description></description>
     </item>
   </channel>

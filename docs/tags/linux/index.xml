@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Linux on WhaleFall&#39;s Blog</title>
+    <link>https://whaleblog.github.io/tags/linux/</link>
+    <description>Recent content in Linux on WhaleFall&#39;s Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh</language>
+    <copyright>&lt;a href=&#34;https://creativecommons.org/licenses/by-nc/4.0/&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;CC BY-NC 4.0&lt;/a&gt;</copyright>
+    <lastBuildDate>Sat, 06 Jul 2024 16:26:00 +0000</lastBuildDate>
+    <atom:link href="https://whaleblog.github.io/tags/linux/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>在 Matebook E 2022 上安装 Kubuntu18.04</title>
+      <link>https://whaleblog.github.io/posts/%E5%A6%82%E6%9E%9C%E4%BD%A0%E6%83%B3%E5%9C%A8&#43;matebook&#43;e&#43;2022&#43;%E4%B8%8A%E4%BD%BF%E7%94%A8&#43;linux/</link>
+      <pubDate>Sat, 06 Jul 2024 16:26:00 +0000</pubDate>
+      <guid>https://whaleblog.github.io/posts/%E5%A6%82%E6%9E%9C%E4%BD%A0%E6%83%B3%E5%9C%A8&#43;matebook&#43;e&#43;2022&#43;%E4%B8%8A%E4%BD%BF%E7%94%A8&#43;linux/</guid>
+      <description>0. 在开始之前 P.S. 这篇博客的内容已过时&#xA;这篇博客不牵涉启动盘的制作，磁盘分区以及系统安装的过程（这些内容你大可以 STFW，网络上有很多更加成熟的教程），目的更多在于方便本人重装之后能够快速上手，故而本文的内容比较杂，包括针对该设备的系统设置，常用工具的安装以及简单的美化&#xA;在 Matebook E 2022 这台设备上安装 Linux 时会遇到显卡驱动的问题，可以看看这个帖子：Huawei Matebook e 2022 款 Iris Xe 显卡问题。对于我这台机子，在不开安全模式的情况下，屏幕的左右两侧会像地质断层一样上下割裂错位。我尝试了 Arch Linux 和 Ubuntu 24 到 19 的版本，皆会出现上述的情况。只有 Kubuntu 18.04 这个版本才能正常显示&#xA;好吧，如果你只是想用这台机器装一个可以使用的 Linux 系统的话，目前我已知最简单的方式，安装 Kubuntu 18.04 吧&#xA;后面有佬做到了在这台设备上安装 Arch Linux，并且详细讲述了后续的安装流程，我跟着他的说明成功安装。所以，如果是要在日常中使用的话，就没有必要将时间花在这篇老古董身上了&#xA;1. 系统设置 Hardware -&amp;gt; Display and Monitor -&amp;gt; 将窗口拉大后可以看到 Scale Display -&amp;gt; 滑动 Scale 调整至 1.7 或 1.8&#xA;Power Management -&amp;gt; Energy Saving -&amp;gt; 自行设置（设备默认省电方案可能会导致系统卡死的情况出现）&#xA;如果不小心删除了底部面板：右键桌面 -&amp;gt; Add Panel -&amp;gt; Kubuntu Default Panel</description>
+    </item>
+  </channel>
+</rss>

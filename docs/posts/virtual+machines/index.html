@@ -13,7 +13,7 @@
 但是实际中出于性能的考虑，很难做到完全的模拟。出于效率的考虑，在 VMM 允许的前提下，Linux 某些时候知道自己正在与 VMM 交互，以获得对于设备的高速访问权限。不过实现虚拟机的大致策略还是完全准确的模拟物理服务器
 Trap-and-Emulate How to build VMM 一种构建 VMM 的方式是完全通过软件模拟（比如用数组模拟寄存器，用 C 代码模拟指令行为），但是很慢，因为你的 VMM 在解析每一条 Guest 指令的时候，都可能要转换成几十条实际的机器指令，这会导致运行速度慢几个数量级。
 相应的，一种广泛使用的策略是在真实的 CPU 上运行 Guest 指令。但是前面说过，我们将 Guest kernel 按照一个 Linux 中的普通用户进程来运行，所以 Guest kernel 现在运行在 User mode，这样在运行 privileged 指令时又会出现问题。但是如果我们蠢到将 Guest kernel 运行在宿主机的 Supervisor mode。那么我们的 Guest kernel 不仅能够修改真实的 Page Table，同时也可以从虚拟机中逃逸，因为它现在可以控制 PTE（Page Table Entry）的内容，并且读写任意的内存内容" />
-<meta name="keywords" content=", mit-6.s081" />
+<meta name="keywords" content=", mit-6.s081, OS" />
 <meta name="robots" content="noodp" />
 <meta name="theme-color" content="" />
 <link rel="canonical" href="https://whaleblog.github.io/posts/virtual&#43;machines/" />
@@ -54,7 +54,7 @@ Trap-and-Emulate How to build VMM 一种构建 VMM 的方式是完全通过软�
 相应的，一种广泛使用的策略是在真实的 CPU 上运行 Guest 指令。但是前面说过，我们将 Guest kernel 按照一个 Linux 中的普通用户进程来运行，所以 Guest kernel 现在运行在 User mode，这样在运行 privileged 指令时又会出现问题。但是如果我们蠢到将 Guest kernel 运行在宿主机的 Supervisor mode。那么我们的 Guest kernel 不仅能够修改真实的 Page Table，同时也可以从虚拟机中逃逸，因为它现在可以控制 PTE（Page Table Entry）的内容，并且读写任意的内存内容"><meta itemprop="datePublished" content="2024-09-01T13:42:00+00:00" />
 <meta itemprop="dateModified" content="2024-09-01T13:42:00+00:00" />
 <meta itemprop="wordCount" content="583"><meta itemprop="image" content="https://whaleblog.github.io/" />
-<meta itemprop="keywords" content="mit-6.s081," />
+<meta itemprop="keywords" content="mit-6.s081,OS," />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://whaleblog.github.io/" /><meta name="twitter:title" content="Virtual Machines"/>
 <meta name="twitter:description" content="Host &amp; Guest 虚拟机是对于计算机的模拟，顾名思义。QEMU 可以说是虚拟机的一个例子
@@ -242,6 +242,7 @@ Trap-and-Emulate How to build VMM 一种构建 VMM 的方式是完全通过软�
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg>
 
         <span class="tag"><a href="https://whaleblog.github.io/tags/mit-6.s081/">mit-6.s081</a></span>
+        <span class="tag"><a href="https://whaleblog.github.io/tags/os/">OS</a></span>
         
     </p>
 

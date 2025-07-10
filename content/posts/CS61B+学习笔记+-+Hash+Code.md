@@ -11,6 +11,7 @@ categories:
  - courses
 tags: 
  - cs61b
+ - data structure
 ---
 
 ## Valid Hashcodes
@@ -20,16 +21,16 @@ tags:
 1.  **确定性（Deterministic）**：如果两个对象A和B彼此相等（`A.equals(B) == true`），则它们的hashCode()函数返回相同的哈希码。这也意味着哈希函数不能依赖于在`equals()`方法中没有反映的对象属性。
     
     比如我们有一个类`Dog`，其`equals`方法是：
-    
-        @Override
-        public boolean equals(Object other) {
-            if (other == this) return true;
-            if (other == null) return false;
-            if (other.getClass() != this.getClass()) return false;
-            Dog that = (Dog) other;
-            return this.breed == that.breed;
-        }
-    
+```Java
+@Override
+public boolean equals(Object other) {
+    if (other == this) return true;
+    if (other == null) return false;
+    if (other.getClass() != this.getClass()) return false;
+    Dog that = (Dog) other;
+    return this.breed == that.breed;
+}
+```
     那么我们的`hashCode()`就不能依赖`breed`之外的属性了
     
     另外，这也要求，**当我们重写**`hashCode()`**时，我们也必须同时重写**`equals()`，因为这是我们认为两个对象相等的唯一依据。

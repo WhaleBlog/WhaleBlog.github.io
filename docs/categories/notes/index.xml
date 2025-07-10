@@ -84,7 +84,7 @@
       <link>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;hash&#43;code/</link>
       <pubDate>Tue, 30 Jul 2024 09:13:29 +0000</pubDate>
       <guid>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;hash&#43;code/</guid>
-      <description>Valid Hashcodes 有效的哈希码必须拥有一下两个属性：&#xA;确定性（Deterministic）：如果两个对象A和B彼此相等（A.equals(B) == true），则它们的hashCode()函数返回相同的哈希码。这也意味着哈希函数不能依赖于在equals()方法中没有反映的对象属性。&#xA;比如我们有一个类Dog，其equals方法是：&#xA;@Override public boolean equals(Object other) { if (other == this) return true; if (other == null) return false; if (other.getClass() != this.getClass()) return false; Dog that = (Dog) other; return this.breed == that.breed; } 那么我们的hashCode()就不能依赖breed之外的属性了&#xA;另外，这也要求，当我们重写hashCode()时，我们也必须同时重写equals()，因为这是我们认为两个对象相等的唯一依据。&#xA;一致性（Consistent）：hashCode()函数在同一个对象实例上每次调用时都返回相同的整数。这意味着hashCode()函数必须独立于时间/秒表、随机数生成器或任何在同一个对象实例上多次调用hashCode()函数时不会给出一致哈希码的方法。&#xA;请注意，没有要求说不相等的对象应该有不同的哈希函数值，那怕每次只返回 -1，那也是一个有效的哈希码。&#xA;Good Hashcodes hashCode()函数必须是有效的。&#xA;hashCode()函数的值应该尽可能均匀地分布在整个整数集合上。&#xA;hashCode()函数的计算应该相对快速（理想情况下是O(1)的常量时间数学运算）。</description>
+      <description>Valid Hashcodes 有效的哈希码必须拥有一下两个属性：&#xA;确定性（Deterministic）：如果两个对象A和B彼此相等（A.equals(B) == true），则它们的hashCode()函数返回相同的哈希码。这也意味着哈希函数不能依赖于在equals()方法中没有反映的对象属性。&#xA;比如我们有一个类Dog，其equals方法是：&#xA;@Override public boolean equals(Object other) { if (other == this) return true; if (other == null) return false; if (other.getClass() != this.getClass()) return false; Dog that = (Dog) other; return this.breed == that.breed; } 那么我们的`hashCode()`就不能依赖`breed`之外的属性了 另外，这也要求，**当我们重写**`hashCode()`**时，我们也必须同时重写**`equals()`，因为这是我们认为两个对象相等的唯一依据。 一致性（Consistent）：hashCode()函数在同一个对象实例上每次调用时都返回相同的整数。这意味着hashCode()函数必须独立于时间/秒表、随机数生成器或任何在同一个对象实例上多次调用hashCode()函数时不会给出一致哈希码的方法。&#xA;请注意，没有要求说不相等的对象应该有不同的哈希函数值，那怕每次只返回 -1，那也是一个有效的哈希码。&#xA;Good Hashcodes hashCode()函数必须是有效的。&#xA;hashCode()函数的值应该尽可能均匀地分布在整个整数集合上。&#xA;hashCode()函数的计算应该相对快速（理想情况下是O(1)的常量时间数学运算）。</description>
     </item>
     <item>
       <title>CS61B 学习笔记 - BST &amp; B-Trees</title>
@@ -99,6 +99,13 @@
       <pubDate>Mon, 29 Jul 2024 08:19:40 +0000</pubDate>
       <guid>https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;disjoint&#43;sets/</guid>
       <description>1. Interface 对于 Disjoint Sets，我们定义如下接口：&#xA;public interface DisjointSets { /** connects two items P and Q */ void connect(int p, int q); /** checks to see if two items are connected */ boolean isConnected(int p, int q); } connect 方法会将两个整数归为同一个集合，isConnected 则用来判断两个整数是否为同一集合&#xA;例如，我们有四个元素 A，B，C，D&#xA;在调用connect(A, B) 后：&#xA;isConnected(A, B) -&amp;gt; true&#xA;isConnected(A, C) -&amp;gt; false&#xA;然后调用connect(A, D)：&#xA;于是有：&#xA;isConnected(A, D) -&amp;gt; true&#xA;isConnected(A, C) -&amp;gt; false&#xA;2. Implements 完整的实现请参照 WeightedQuickUnionUF&#xA;2.1 isConnected 我们使用parent数组来表示这样的不相交集。准确来说，使用数组来表示几颗棵树，处在同一棵树的元素，即拥有相同根节点的元素，属于同一个集合</description>
+    </item>
+    <item>
+      <title>在 Matebook E 2022 上安装 Kubuntu18.04</title>
+      <link>https://whaleblog.github.io/posts/%E5%A6%82%E6%9E%9C%E4%BD%A0%E6%83%B3%E5%9C%A8&#43;matebook&#43;e&#43;2022&#43;%E4%B8%8A%E4%BD%BF%E7%94%A8&#43;linux/</link>
+      <pubDate>Sat, 06 Jul 2024 16:26:00 +0000</pubDate>
+      <guid>https://whaleblog.github.io/posts/%E5%A6%82%E6%9E%9C%E4%BD%A0%E6%83%B3%E5%9C%A8&#43;matebook&#43;e&#43;2022&#43;%E4%B8%8A%E4%BD%BF%E7%94%A8&#43;linux/</guid>
+      <description>0. 在开始之前 P.S. 这篇博客的内容已过时&#xA;这篇博客不牵涉启动盘的制作，磁盘分区以及系统安装的过程（这些内容你大可以 STFW，网络上有很多更加成熟的教程），目的更多在于方便本人重装之后能够快速上手，故而本文的内容比较杂，包括针对该设备的系统设置，常用工具的安装以及简单的美化&#xA;在 Matebook E 2022 这台设备上安装 Linux 时会遇到显卡驱动的问题，可以看看这个帖子：Huawei Matebook e 2022 款 Iris Xe 显卡问题。对于我这台机子，在不开安全模式的情况下，屏幕的左右两侧会像地质断层一样上下割裂错位。我尝试了 Arch Linux 和 Ubuntu 24 到 19 的版本，皆会出现上述的情况。只有 Kubuntu 18.04 这个版本才能正常显示&#xA;好吧，如果你只是想用这台机器装一个可以使用的 Linux 系统的话，目前我已知最简单的方式，安装 Kubuntu 18.04 吧&#xA;后面有佬做到了在这台设备上安装 Arch Linux，并且详细讲述了后续的安装流程，我跟着他的说明成功安装。所以，如果是要在日常中使用的话，就没有必要将时间花在这篇老古董身上了&#xA;1. 系统设置 Hardware -&amp;gt; Display and Monitor -&amp;gt; 将窗口拉大后可以看到 Scale Display -&amp;gt; 滑动 Scale 调整至 1.7 或 1.8&#xA;Power Management -&amp;gt; Energy Saving -&amp;gt; 自行设置（设备默认省电方案可能会导致系统卡死的情况出现）&#xA;如果不小心删除了底部面板：右键桌面 -&amp;gt; Add Panel -&amp;gt; Kubuntu Default Panel</description>
     </item>
   </channel>
 </rss>

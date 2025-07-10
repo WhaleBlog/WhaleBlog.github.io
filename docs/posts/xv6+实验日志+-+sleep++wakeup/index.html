@@ -14,7 +14,7 @@ Sleep &amp;amp; Wakeup 当我们写一个线程的代码时，有些场景需要
 如果你知道你要等待的事件极有可能在 0.1 微秒内发生，通过一个类似的循环等待或许是最正确的方式。通常来说在操作设备硬件的代码中会采用这样的等待方式
 如果事件可能需要数个毫秒（要知道现代 PC 每秒运行数亿次指令）甚至你都不知道事件要多久才能发生，那么我们就不想在这一直循环并且浪费本可以用来完成其他任务的 CPU 时间。这时我们想要通过类似 swtch 函数调用的方式出让 CPU，并在我们关心的事件发生时重新获取 CPU。Coordination 就是有关出让 CPU ，直到等待的事件发生再恢复执行的工具。与许多 Unix 风格操作系统一样，xv6 使用 Sleep &amp;amp; Wakeup 的方式
 // Atomically release lock and sleep on chan." />
-<meta name="keywords" content=", mit-6.s081, xv6" />
+<meta name="keywords" content=", mit-6.s081, xv6, OS" />
 <meta name="robots" content="noodp" />
 <meta name="theme-color" content="" />
 <link rel="canonical" href="https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;sleep&#43;&#43;wakeup/" />
@@ -56,7 +56,7 @@ Sleep &amp; Wakeup 当我们写一个线程的代码时，有些场景需要等�
 // Atomically release lock and sleep on chan."><meta itemprop="datePublished" content="2024-08-22T11:19:42+00:00" />
 <meta itemprop="dateModified" content="2024-08-22T11:19:42+00:00" />
 <meta itemprop="wordCount" content="903"><meta itemprop="image" content="https://whaleblog.github.io/" />
-<meta itemprop="keywords" content="mit-6.s081,xv6," />
+<meta itemprop="keywords" content="mit-6.s081,xv6,OS," />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://whaleblog.github.io/" /><meta name="twitter:title" content="xv6 实验日志 - Sleep &amp; Wakeup"/>
 <meta name="twitter:description" content="xv6 在进程切换之时还有一些限制：不允许进程在执行switch函数的过程中，持有任何其他的锁。即进程在调用switch函数的过程中，必须要持有 p-&gt;lock，但是同时又不能持有任何其他的锁
@@ -456,6 +456,7 @@ Sleep &amp; Wakeup 当我们写一个线程的代码时，有些场景需要等�
 
         <span class="tag"><a href="https://whaleblog.github.io/tags/mit-6.s081/">mit-6.s081</a></span>
         <span class="tag"><a href="https://whaleblog.github.io/tags/xv6/">xv6</a></span>
+        <span class="tag"><a href="https://whaleblog.github.io/tags/os/">OS</a></span>
         
     </p>
 

@@ -21,7 +21,7 @@ CPU核处理完中断之后，CPU会通知PLIC
 PLIC将不再保存中断的信息
 在 main() 函数的后面部分调用了 plicinit() 与 plicinithart()。plicinit() 使能 PLIC 接受 UART 与 VIRTIO 的中断。plicinithart() 则让每个 CPU 声明其可处理 UART 与 VIRTIO 的中断，并设置了优先级
 在 main 最后的 scheduler 函数中会调用 intr_on()。这个函数设置了 sstatus 的 SIE，打开中断标志位，这样 CPU 就有能力接受中断了" />
-<meta name="keywords" content=", xv6, mit-6.s081" />
+<meta name="keywords" content=", xv6, mit-6.s081, OS" />
 <meta name="robots" content="noodp" />
 <meta name="theme-color" content="" />
 <link rel="canonical" href="https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;interrupts/" />
@@ -70,7 +70,7 @@ PLIC将不再保存中断的信息
 在 main 最后的 scheduler 函数中会调用 intr_on()。这个函数设置了 sstatus 的 SIE，打开中断标志位，这样 CPU 就有能力接受中断了"><meta itemprop="datePublished" content="2024-08-19T10:52:05+00:00" />
 <meta itemprop="dateModified" content="2024-08-19T10:52:05+00:00" />
 <meta itemprop="wordCount" content="332"><meta itemprop="image" content="https://whaleblog.github.io/" />
-<meta itemprop="keywords" content="xv6,mit-6.s081," />
+<meta itemprop="keywords" content="xv6,mit-6.s081,OS," />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://whaleblog.github.io/" /><meta name="twitter:title" content="xv6 实验日志 - Interrupts"/>
 <meta name="twitter:description" content="虽然以中断为名，但这里并不涉及软件中断和计时器中断。这里只为搞清一件事情：xv6 Console 的 $ ls 是怎么出现的
@@ -285,6 +285,7 @@ PLIC将不再保存中断的信息
 
         <span class="tag"><a href="https://whaleblog.github.io/tags/xv6/">xv6</a></span>
         <span class="tag"><a href="https://whaleblog.github.io/tags/mit-6.s081/">mit-6.s081</a></span>
+        <span class="tag"><a href="https://whaleblog.github.io/tags/os/">OS</a></span>
         
     </p>
 

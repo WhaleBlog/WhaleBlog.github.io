@@ -11,6 +11,7 @@ categories:
  - courses
 tags: 
  - cs61b
+ - data structure
 ---
 
 ## 1\. Interface

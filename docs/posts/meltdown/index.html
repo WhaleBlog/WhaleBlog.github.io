@@ -15,7 +15,7 @@ Robert 教授：是的。或许找到内存地址本身就很难，但是你需�
 在这个攻守双方的游戏中，我们需要假设攻击者最后可以胜出并拿到内核的虚拟内存地址。所以我们会假设攻击者要么已经知道了一个内核虚拟地址，要么愿意尝试每一个内核虚拟内存地址。
 Speculative execution 预测执行是一种用来提升 CPU 性能的技术。假设我们运行如下代码：
 r0 = &amp;lt;something&amp;gt; r1 = valid if (r1 == 1) { r2 = *r0 r3 = r2 &#43; 1 } else { r3 = 0 } /* r0, r1, r2, r3 are registers, valid is in RAM */ 任何一个需要从内存中读取数据的 load 指令都会花费 2GHZ CPU 的数百个 CPU cycle，在 r1 获取 valid 值时亦是如此" />
-<meta name="keywords" content=", mit-6.s081" />
+<meta name="keywords" content=", mit-6.s081, OS" />
 <meta name="robots" content="noodp" />
 <meta name="theme-color" content="" />
 <link rel="canonical" href="https://whaleblog.github.io/posts/meltdown/" />
@@ -58,7 +58,7 @@ Speculative execution 预测执行是一种用来提升 CPU 性能的技术。�
 r0 = &lt;something&gt; r1 = valid if (r1 == 1) { r2 = *r0 r3 = r2 &#43; 1 } else { r3 = 0 } /* r0, r1, r2, r3 are registers, valid is in RAM */ 任何一个需要从内存中读取数据的 load 指令都会花费 2GHZ CPU 的数百个 CPU cycle，在 r1 获取 valid 值时亦是如此"><meta itemprop="datePublished" content="2024-08-31T21:07:01+00:00" />
 <meta itemprop="dateModified" content="2024-08-31T21:07:01+00:00" />
 <meta itemprop="wordCount" content="471"><meta itemprop="image" content="https://whaleblog.github.io/" />
-<meta itemprop="keywords" content="mit-6.s081," />
+<meta itemprop="keywords" content="mit-6.s081,OS," />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://whaleblog.github.io/" /><meta name="twitter:title" content="Meltdown"/>
 <meta name="twitter:description" content="Meltdown 是一种利用了 CPU 预测执行的攻击手段。如它的名字一样，它”溶解“了用户空间与内核空间的隔离性。详细内容可以访问 https://meltdownattack.com 查看
@@ -273,6 +273,7 @@ if b - a &lt; c - b
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg>
 
         <span class="tag"><a href="https://whaleblog.github.io/tags/mit-6.s081/">mit-6.s081</a></span>
+        <span class="tag"><a href="https://whaleblog.github.io/tags/os/">OS</a></span>
         
     </p>
 

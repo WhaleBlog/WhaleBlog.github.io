@@ -9,7 +9,7 @@
 <meta name="description" content="Dijkstra&amp;rsquo;s Algorithm 还是贴伪代码
 def dijkstras(source): # 初始化最小优先队列，存储节点与该节点到起点的最短距离 # 设置起点距离为 0，其他节点距离无限 PQ.add(source, 0) For all other vertices, v, PQ.add(v, infinity) while PQ is not empty: # 出队剩余未操作节点中距离最短的节点 p = PQ.removeSmallest() relax(all edges from p) def relax(edge p,q): if q is visited (i.e., q is not in PQ): return # 若是新路径的距离更短，更新 if distTo[p] &#43; weight(edge) &amp;lt; distTo[q]: distTo[q] = distTo[p] &#43; w edgeTo[q] = p PQ.changePriority(q, distTo[q]) 在图中存在负边的情况下，Dijkstra 算法不能保证正确。这可能有用……但这并不能保证有效。
 A* Dijkstra 算法其实像是以起点为中心，向四面八方进行地毯式搜索。但假如我只是搜索武汉到北京的最短路径，我有必要搜索到西藏地区吗？" />
-<meta name="keywords" content=", cs61b" />
+<meta name="keywords" content=", cs61b, data structure" />
 <meta name="robots" content="noodp" />
 <meta name="theme-color" content="" />
 <link rel="canonical" href="https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;shortest&#43;paths/" />
@@ -46,7 +46,7 @@ def dijkstras(source): # 初始化最小优先队列，存储节点与该节点�
 A* Dijkstra 算法其实像是以起点为中心，向四面八方进行地毯式搜索。但假如我只是搜索武汉到北京的最短路径，我有必要搜索到西藏地区吗？"><meta itemprop="datePublished" content="2024-07-30T12:30:43+00:00" />
 <meta itemprop="dateModified" content="2024-07-30T12:30:43+00:00" />
 <meta itemprop="wordCount" content="121"><meta itemprop="image" content="https://whaleblog.github.io/" />
-<meta itemprop="keywords" content="cs61b," />
+<meta itemprop="keywords" content="cs61b,data structure," />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://whaleblog.github.io/" /><meta name="twitter:title" content="CS61B 学习笔记 - Shortest Paths"/>
 <meta name="twitter:description" content="Dijkstra&rsquo;s Algorithm 还是贴伪代码
@@ -159,27 +159,26 @@ A* Dijkstra 算法其实像是以起点为中心，向四面八方进行地毯�
       <div class="post-content">
         <h2 id="dijkstras-algorithm">Dijkstra&rsquo;s Algorithm</h2>
 <p>还是贴伪代码</p>
-<pre><code>def dijkstras(source):
-    # 初始化最小优先队列，存储节点与该节点到起点的最短距离
-    # 设置起点距离为 0，其他节点距离无限
-    PQ.add(source, 0) 
-    For all other vertices, v, PQ.add(v, infinity)
-    while PQ is not empty:
-        # 出队剩余未操作节点中距离最短的节点
-        p = PQ.removeSmallest()
-        relax(all edges from p)
-
-def relax(edge p,q):
-   if q is visited (i.e., q is not in PQ):
-       return
-    
-   # 若是新路径的距离更短，更新
-   if distTo[p] + weight(edge) &lt; distTo[q]:
-       distTo[q] = distTo[p] + w
-       edgeTo[q] = p
-       PQ.changePriority(q, distTo[q])
-</code></pre>
-<p>在图中存在负边的情况下，Dijkstra 算法不能保证正确。这可能有用……但这并不能保证有效。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Python" data-lang="Python"><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">dijkstras</span>(source):
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># 初始化最小优先队列，存储节点与该节点到起点的最短距离</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># 设置起点距离为 0，其他节点距离无限</span>
+</span></span><span style="display:flex;"><span>    PQ<span style="color:#f92672">.</span>add(source, <span style="color:#ae81ff">0</span>) 
+</span></span><span style="display:flex;"><span>    For all other vertices, v, PQ<span style="color:#f92672">.</span>add(v, infinity)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> PQ <span style="color:#f92672">is</span> <span style="color:#f92672">not</span> empty:
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e"># 出队剩余未操作节点中距离最短的节点</span>
+</span></span><span style="display:flex;"><span>        p <span style="color:#f92672">=</span> PQ<span style="color:#f92672">.</span>removeSmallest()
+</span></span><span style="display:flex;"><span>        relax(all edges <span style="color:#f92672">from</span> p)
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">relax</span>(edge p,q):
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> q <span style="color:#f92672">is</span> visited (i<span style="color:#f92672">.</span>e<span style="color:#f92672">.</span>, q <span style="color:#f92672">is</span> <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> PQ):
+</span></span><span style="display:flex;"><span>       <span style="color:#66d9ef">return</span>
+</span></span><span style="display:flex;"><span>        
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># 若是新路径的距离更短，更新</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> distTo[p] <span style="color:#f92672">+</span> weight(edge) <span style="color:#f92672">&lt;</span> distTo[q]:
+</span></span><span style="display:flex;"><span>       distTo[q] <span style="color:#f92672">=</span> distTo[p] <span style="color:#f92672">+</span> w
+</span></span><span style="display:flex;"><span>       edgeTo[q] <span style="color:#f92672">=</span> p
+</span></span><span style="display:flex;"><span>       PQ<span style="color:#f92672">.</span>changePriority(q, distTo[q])
+</span></span></code></pre></div><p>在图中存在负边的情况下，Dijkstra 算法不能保证正确。这可能有用……但这并不能保证有效。</p>
 <h2 id="a">A*</h2>
 <p>Dijkstra 算法其实像是以起点为中心，向四面八方进行地毯式搜索。但假如我只是搜索武汉到北京的最短路径，我有必要搜索到西藏地区吗？</p>
 <p>当然不会，因为我们知道我们应该向北搜索，而不是转向西南方向。为什么？因为武汉以北的城市会距离北京越来越近，而西南方向的城市会越来越远。</p>
@@ -192,11 +191,10 @@ def relax(edge p,q):
 </li>
 <li>
 <p>对于 v 的每个邻居 w:</p>
-<pre><code>heuristic(v, target) &lt;= dist(v, w) + heuristic(w, target)
-</code></pre>
-<p>我们姑且把<code>heuristic(v, target)</code>认为是 v 到 target 的估计距离吧，上面这句话的意思便是，<strong>v到target的估计距离 不得大于 v到w的距离 与 w到target的估计距离 之和</strong></p>
 </li>
 </ol>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Python" data-lang="Python"><span style="display:flex;"><span>heuristic(v, target) <span style="color:#f92672">&lt;=</span> dist(v, w) <span style="color:#f92672">+</span> heuristic(w, target)
+</span></span></code></pre></div><pre><code>我们姑且把`heuristic(v, target)`认为是 v 到 target 的估计距离吧，上面这句话的意思便是，**v到target的估计距离 不得大于 v到w的距离 与 w到target的估计距离 之和**</code></pre>
 
       </div>
     </article>
@@ -209,6 +207,7 @@ def relax(edge p,q):
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg>
 
         <span class="tag"><a href="https://whaleblog.github.io/tags/cs61b/">cs61b</a></span>
+        <span class="tag"><a href="https://whaleblog.github.io/tags/data-structure/">data structure</a></span>
         
     </p>
 

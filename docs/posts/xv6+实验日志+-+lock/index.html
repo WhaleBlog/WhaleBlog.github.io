@@ -20,7 +20,7 @@ release，也接收指向 lock 的指针作为参数。在同一时间尝试获�
 好吧，这条规则并不完美，但是它已经是一个足够好的指导准则
 自动加锁 如果按照刚刚的简单规则，一旦我们有了一个共享的数据结构，任何操作这个共享数据结构都需要获取锁，那么对其进行操作时自动地获取锁即可
 但是这样并不行，假如说我要把 ~/dir1/x 文件 mv 到 ~/dir2/y，那么按照这条规则，先对 x 加锁，删除 x，然后释放锁；再对 y 加锁，创建 y，接着释放锁。" />
-<meta name="keywords" content=", mit-6.s081, xv6" />
+<meta name="keywords" content=", mit-6.s081, xv6, OS" />
 <meta name="robots" content="noodp" />
 <meta name="theme-color" content="" />
 <link rel="canonical" href="https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;lock/" />
@@ -68,7 +68,7 @@ release，也接收指向 lock 的指针作为参数。在同一时间尝试获�
 但是这样并不行，假如说我要把 ~/dir1/x 文件 mv 到 ~/dir2/y，那么按照这条规则，先对 x 加锁，删除 x，然后释放锁；再对 y 加锁，创建 y，接着释放锁。"><meta itemprop="datePublished" content="2024-08-19T20:07:43+00:00" />
 <meta itemprop="dateModified" content="2024-08-19T20:07:43+00:00" />
 <meta itemprop="wordCount" content="507"><meta itemprop="image" content="https://whaleblog.github.io/" />
-<meta itemprop="keywords" content="mit-6.s081,xv6," />
+<meta itemprop="keywords" content="mit-6.s081,xv6,OS," />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://whaleblog.github.io/" /><meta name="twitter:title" content="xv6 实验日志 - Lock"/>
 <meta name="twitter:description" content="刚开始接触这个概念的时候觉得锁更像是通行证一类的东西。问了下 AI，它这么和我解释：
@@ -260,38 +260,36 @@ release，也接收指向 lock 的指针作为参数。在同一时间尝试获�
 <p>这条指令会先锁定住 address，将 address 中的数据保存在一个临时变量中（tmp），之后将 r1 中的数据写入到地址中，之后再将保存在临时变量中的数据写入到 r2 中，最后再对于地址解锁。即最后 r1 维持不变，r2 保存了 address 处原来的值，地址 address 处的值变更为 r1</p>
 <p>这里不能使用 sd 写 address。在硬件层面上，sd 会被分成几个子操作，在执行 sd 指令的过程中，处理器可能会被中断，导致指令执行被暂时挂起；在多处理器系统中，sd 指令执行后，新写入的值可能不会立即对所有处理器可见</p>
 <p>xv6 中 acquire 源代码如下：</p>
-<pre><code>void
-acquire(struct spinlock *lk)
-{
-  push_off(); // disable interrupts to avoid deadlock.
-  if(holding(lk))
-    panic(&quot;acquire&quot;);
-
-  // On RISC-V, sync_lock_test_and_set turns into an atomic swap:
-  //   a5 = 1
-  //   s1 = &amp;lk-&gt;locked
-  //   amoswap.w.aq a5, a5, (s1)
-  while(__sync_lock_test_and_set(&amp;lk-&gt;locked, 1) != 0)
-    ;
-
-  // Tell the C compiler and the processor to not move loads or stores
-  // past this point, to ensure that the critical section's memory
-  // references happen strictly after the lock is acquired.
-  // On RISC-V, this emits a fence instruction.
-  __sync_synchronize();
-
-  // Record info about lock acquisition for holding() and debugging.
-  lk-&gt;cpu = mycpu();
-}
-</code></pre>
-<p>可以看到循环判断 locked 的部分的汇编代码</p>
-<pre><code>  while(__sync_lock_test_and_set(&amp;lk-&gt;locked, 1) != 0)
-    800062ba:	87ba                	mv	a5,a4
-    800062bc:	0cf4a7af          	amoswap.w.aq	a5,a5,(s1)
-    800062c0:	2781                	sext.w	a5,a5
-    800062c2:	ffe5                	bnez	a5,800062ba &lt;acquire+0x22&gt;
-</code></pre>
-<h3 id="关闭中断">关闭中断</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#66d9ef">void</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">acquire</span>(<span style="color:#66d9ef">struct</span> spinlock <span style="color:#f92672">*</span>lk)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">push_off</span>(); <span style="color:#75715e">// disable interrupts to avoid deadlock.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">if</span>(<span style="color:#a6e22e">holding</span>(lk))
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">panic</span>(<span style="color:#e6db74">&#34;acquire&#34;</span>);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// On RISC-V, sync_lock_test_and_set turns into an atomic swap:
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">//   a5 = 1
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">//   s1 = &amp;lk-&gt;locked
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">//   amoswap.w.aq a5, a5, (s1)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">while</span>(<span style="color:#a6e22e">__sync_lock_test_and_set</span>(<span style="color:#f92672">&amp;</span>lk<span style="color:#f92672">-&gt;</span>locked, <span style="color:#ae81ff">1</span>) <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>        ;
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Tell the C compiler and the processor to not move loads or stores
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// past this point, to ensure that the critical section&#39;s memory
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// references happen strictly after the lock is acquired.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// On RISC-V, this emits a fence instruction.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">__sync_synchronize</span>();
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>      <span style="color:#75715e">// Record info about lock acquisition for holding() and debugging.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    lk<span style="color:#f92672">-&gt;</span>cpu <span style="color:#f92672">=</span> <span style="color:#a6e22e">mycpu</span>();
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>可以看到循环判断 locked 的部分的汇编代码</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#66d9ef">while</span>(<span style="color:#a6e22e">__sync_lock_test_and_set</span>(<span style="color:#f92672">&amp;</span>lk<span style="color:#f92672">-&gt;</span>locked, <span style="color:#ae81ff">1</span>) <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#ae81ff">800062</span>ba:	<span style="color:#ae81ff">87</span>ba                	mv	a5,a4
+</span></span><span style="display:flex;"><span>        <span style="color:#ae81ff">800062</span>bc:	<span style="color:#ae81ff">0</span>cf4a7af          	amoswap.w.aq	a5,a5,(s1)
+</span></span><span style="display:flex;"><span>        <span style="color:#ae81ff">800062</span>c0:	<span style="color:#ae81ff">2781</span>                	sext.w	a5,a5
+</span></span><span style="display:flex;"><span>        <span style="color:#ae81ff">800062</span>c2:	ffe5                	bnez	a5,<span style="color:#ae81ff">800062</span>ba <span style="color:#f92672">&lt;</span>acquire<span style="color:#f92672">+</span><span style="color:#ae81ff">0x22</span><span style="color:#f92672">&gt;</span>
+</span></span></code></pre></div><h3 id="关闭中断">关闭中断</h3>
 <p>这里还又一处细节：在 acquire 最开始通过 push_off 关闭了中断</p>
 <p>以 UART 为例，这个设备使用 uart_tx_lock 一把大锁。假设当 top 驱动向 uart 写入字符时，最终会调用 uartputc。uartputc 函数会 acquire 锁，当 UART 完成了字符传输之后会产生一个中断，之后会运行 uartintr 函数，这个函数也会获取同一把锁，但是这把锁正在被 uartputc 持有。如果只有一个 CPU 的话，那就形成了死锁</p>
 <p>我们需要在 acquire 中关闭中断。中断会在 release 的结束位置再次打开，因为在这个位置才能再次安全的接收中断</p>
@@ -314,6 +312,7 @@ acquire(struct spinlock *lk)
 
         <span class="tag"><a href="https://whaleblog.github.io/tags/mit-6.s081/">mit-6.s081</a></span>
         <span class="tag"><a href="https://whaleblog.github.io/tags/xv6/">xv6</a></span>
+        <span class="tag"><a href="https://whaleblog.github.io/tags/os/">OS</a></span>
         
     </p>
 

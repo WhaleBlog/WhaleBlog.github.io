@@ -25,7 +25,7 @@ supervisor mode 并不那么特权，在这个模式下只能做两件事情：
 访问控制寄存器
 对 PTE_U = 0 的页进行操作（也就是说不能操作 PTE_U = 1 的页，不能直接访问物理地址）
 trampoline 在 用户空间与内核空间会被映射在相同的虚拟地址，说明书中给出的原因是：" />
-<meta name="keywords" content=", xv6, mit-6.s081" />
+<meta name="keywords" content=", xv6, mit-6.s081, OS" />
 <meta name="robots" content="noodp" />
 <meta name="theme-color" content="" />
 <link rel="canonical" href="https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;trap/" />
@@ -78,7 +78,7 @@ supervisor mode 并不那么特权，在这个模式下只能做两件事情：
 trampoline 在 用户空间与内核空间会被映射在相同的虚拟地址，说明书中给出的原因是："><meta itemprop="datePublished" content="2024-08-14T20:28:07+00:00" />
 <meta itemprop="dateModified" content="2024-08-14T20:28:07+00:00" />
 <meta itemprop="wordCount" content="1147"><meta itemprop="image" content="https://whaleblog.github.io/" />
-<meta itemprop="keywords" content="xv6,mit-6.s081," />
+<meta itemprop="keywords" content="xv6,mit-6.s081,OS," />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://whaleblog.github.io/" /><meta name="twitter:title" content="xv6 实验日志 - Trap"/>
 <meta name="twitter:description" content="今天在看系统调用的时候发现自己把 xv6 的内存映射的约定给忘了。因为害怕后续做实验的时候会把前面花了不少时间才弄明白的机制遗忘，所以决定简单记录一下
@@ -545,6 +545,7 @@ uservec:
 
         <span class="tag"><a href="https://whaleblog.github.io/tags/xv6/">xv6</a></span>
         <span class="tag"><a href="https://whaleblog.github.io/tags/mit-6.s081/">mit-6.s081</a></span>
+        <span class="tag"><a href="https://whaleblog.github.io/tags/os/">OS</a></span>
         
     </p>
 

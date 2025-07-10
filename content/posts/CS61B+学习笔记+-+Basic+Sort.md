@@ -11,6 +11,7 @@ categories:
  - courses
 tags: 
  - cs61b
+ - Data Structure
 ---
 
 ## In-place Insertion Sort
