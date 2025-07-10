@@ -12,4 +12,4 @@ fi
 
 git add .
 git commit $flag "$msg"
-git push origin main
+git push origin master
