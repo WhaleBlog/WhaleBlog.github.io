@@ -1,12 +1,4 @@
-<!DOCTYPE html>
-<html lang="zh">
-    <head>
-        <meta charset="UTF-8">
-<meta http-equiv="X-UA-Compatible" content="ie=edge">
-
-<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<meta name="author" content="">
-<meta name="description" content="页表 这张图片很好地说明了 xv6 页表机制
+<!doctype html><html lang=zh><head><meta charset=UTF-8><meta http-equiv=X-UA-Compatible content="ie=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=author content><meta name=description content="页表 这张图片很好地说明了 xv6 页表机制
 其中补充说明几点：
 虚拟地址由三部分所组成：EXT（无实际作用，忽略），三级页表的 index，以及物理页的偏移量 offset
 每个页表占据一个 PGSIZE 的空间 （4096 bytes），每个页表内有 512 个条目，称为 PTE。每个 PTE 有 64 位，由 PPN 与 Flag 所组成。
@@ -15,548 +7,136 @@ satp 寄存器指向第一级页表的物理地址
 PTE 中的 flag 在图片的下方有详细的描述
 OS 对于地址的映射有绝对的控制权，可以任意地将某个虚拟页映射到某个物理页
 虚拟地址到物理地址转换的步骤是由硬件的 MMU 实现的，OS 负责处理页表。但在 xv6 中有 walk() 函数模拟这一点，因为 xv6 通过直接写物理地址来实现内核空间与用户空间的传参
-// Return the address of the PTE in page table pagetable // that corresponds to virtual address va." />
-<meta name="keywords" content=", mit-6.s081, xv6, OS" />
-<meta name="robots" content="noodp" />
-<meta name="theme-color" content="" />
-<link rel="canonical" href="https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;page&#43;table/" />
-
-
-    <title>
-        
-            xv6 实验日志 - Page Table :: WhaleFall&#39;s Blog 
-        
-    </title>
-
-
-
-
-
-  <link rel="stylesheet" href="/main.min.ab5336003ba331300318b49292c672210905baf1ef5410a739f647e70c8808fa.css" integrity="sha256-q1M2ADujMTADGLSSksZyIQkFuvHvVBCnOfZH5wyICPo=" crossorigin="anonymous">
-
-
-
-
-
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="manifest" href="/site.webmanifest">
-    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="">
-    <link rel="shortcut icon" href="/favicon.ico">
-    <meta name="msapplication-TileColor" content="">
-
-
-<meta itemprop="name" content="xv6 实验日志 - Page Table">
-<meta itemprop="description" content="页表 这张图片很好地说明了 xv6 页表机制
+// Return the address of the PTE in page table pagetable // that corresponds to virtual address va."><meta name=keywords content=",mit-6.s081,xv6,OS"><meta name=robots content="noodp"><meta name=theme-color content><link rel=canonical href=https://whaleblog.github.io/posts/xv6+%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97+-+page+table/><title>xv6 实验日志 - Page Table :: WhaleFall's Blog
+</title><link rel=stylesheet href=/main.min.ab5336003ba331300318b49292c672210905baf1ef5410a739f647e70c8808fa.css integrity="sha256-q1M2ADujMTADGLSSksZyIQkFuvHvVBCnOfZH5wyICPo=" crossorigin=anonymous><link rel=apple-touch-icon sizes=180x180 href=/apple-touch-icon.png><link rel=icon type=image/png sizes=32x32 href=/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicon-16x16.png><link rel=manifest href=/site.webmanifest><link rel=mask-icon href=/safari-pinned-tab.svg color><link rel="shortcut icon" href=/favicon.ico><meta name=msapplication-TileColor content><meta itemprop=name content="xv6 实验日志 - Page Table"><meta itemprop=description content="页表 这张图片很好地说明了 xv6 页表机制
 其中补充说明几点：
 虚拟地址由三部分所组成：EXT（无实际作用，忽略），三级页表的 index，以及物理页的偏移量 offset
 每个页表占据一个 PGSIZE 的空间 （4096 bytes），每个页表内有 512 个条目，称为 PTE。每个 PTE 有 64 位，由 PPN 与 Flag 所组成。
-对于第一，第二级页表的 PPN，其所指向的是下一级页表的物理地址（由 PPN &laquo; 12 可得）。第三级页表的 PPN 指向的是虚拟地址所映射的物理页的起始地址，加上 va 的 offset 便可得到实际的 pa
+对于第一，第二级页表的 PPN，其所指向的是下一级页表的物理地址（由 PPN &#171; 12 可得）。第三级页表的 PPN 指向的是虚拟地址所映射的物理页的起始地址，加上 va 的 offset 便可得到实际的 pa
 satp 寄存器指向第一级页表的物理地址
 PTE 中的 flag 在图片的下方有详细的描述
 OS 对于地址的映射有绝对的控制权，可以任意地将某个虚拟页映射到某个物理页
 虚拟地址到物理地址转换的步骤是由硬件的 MMU 实现的，OS 负责处理页表。但在 xv6 中有 walk() 函数模拟这一点，因为 xv6 通过直接写物理地址来实现内核空间与用户空间的传参
-// Return the address of the PTE in page table pagetable // that corresponds to virtual address va."><meta itemprop="datePublished" content="2024-08-15T10:56:03+00:00" />
-<meta itemprop="dateModified" content="2024-08-15T10:56:03+00:00" />
-<meta itemprop="wordCount" content="510"><meta itemprop="image" content="https://whaleblog.github.io/" />
-<meta itemprop="keywords" content="mit-6.s081,xv6,OS," />
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:image" content="https://whaleblog.github.io/" /><meta name="twitter:title" content="xv6 实验日志 - Page Table"/>
-<meta name="twitter:description" content="页表 这张图片很好地说明了 xv6 页表机制
+// Return the address of the PTE in page table pagetable // that corresponds to virtual address va."><meta itemprop=datePublished content="2024-08-15T10:56:03+00:00"><meta itemprop=dateModified content="2024-08-15T10:56:03+00:00"><meta itemprop=wordCount content="510"><meta itemprop=image content="https://whaleblog.github.io/"><meta itemprop=keywords content="mit-6.s081,xv6,OS,"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://whaleblog.github.io/"><meta name=twitter:title content="xv6 实验日志 - Page Table"><meta name=twitter:description content="页表 这张图片很好地说明了 xv6 页表机制
 其中补充说明几点：
 虚拟地址由三部分所组成：EXT（无实际作用，忽略），三级页表的 index，以及物理页的偏移量 offset
 每个页表占据一个 PGSIZE 的空间 （4096 bytes），每个页表内有 512 个条目，称为 PTE。每个 PTE 有 64 位，由 PPN 与 Flag 所组成。
-对于第一，第二级页表的 PPN，其所指向的是下一级页表的物理地址（由 PPN &laquo; 12 可得）。第三级页表的 PPN 指向的是虚拟地址所映射的物理页的起始地址，加上 va 的 offset 便可得到实际的 pa
+对于第一，第二级页表的 PPN，其所指向的是下一级页表的物理地址（由 PPN &#171; 12 可得）。第三级页表的 PPN 指向的是虚拟地址所映射的物理页的起始地址，加上 va 的 offset 便可得到实际的 pa
 satp 寄存器指向第一级页表的物理地址
 PTE 中的 flag 在图片的下方有详细的描述
 OS 对于地址的映射有绝对的控制权，可以任意地将某个虚拟页映射到某个物理页
 虚拟地址到物理地址转换的步骤是由硬件的 MMU 实现的，OS 负责处理页表。但在 xv6 中有 walk() 函数模拟这一点，因为 xv6 通过直接写物理地址来实现内核空间与用户空间的传参
-// Return the address of the PTE in page table pagetable // that corresponds to virtual address va."/>
-
-
-
-    <meta property="og:title" content="xv6 实验日志 - Page Table" />
-<meta property="og:description" content="页表 这张图片很好地说明了 xv6 页表机制
+// Return the address of the PTE in page table pagetable // that corresponds to virtual address va."><meta property="og:title" content="xv6 实验日志 - Page Table"><meta property="og:description" content="页表 这张图片很好地说明了 xv6 页表机制
 其中补充说明几点：
 虚拟地址由三部分所组成：EXT（无实际作用，忽略），三级页表的 index，以及物理页的偏移量 offset
 每个页表占据一个 PGSIZE 的空间 （4096 bytes），每个页表内有 512 个条目，称为 PTE。每个 PTE 有 64 位，由 PPN 与 Flag 所组成。
-对于第一，第二级页表的 PPN，其所指向的是下一级页表的物理地址（由 PPN &laquo; 12 可得）。第三级页表的 PPN 指向的是虚拟地址所映射的物理页的起始地址，加上 va 的 offset 便可得到实际的 pa
+对于第一，第二级页表的 PPN，其所指向的是下一级页表的物理地址（由 PPN &#171; 12 可得）。第三级页表的 PPN 指向的是虚拟地址所映射的物理页的起始地址，加上 va 的 offset 便可得到实际的 pa
 satp 寄存器指向第一级页表的物理地址
 PTE 中的 flag 在图片的下方有详细的描述
 OS 对于地址的映射有绝对的控制权，可以任意地将某个虚拟页映射到某个物理页
 虚拟地址到物理地址转换的步骤是由硬件的 MMU 实现的，OS 负责处理页表。但在 xv6 中有 walk() 函数模拟这一点，因为 xv6 通过直接写物理地址来实现内核空间与用户空间的传参
-// Return the address of the PTE in page table pagetable // that corresponds to virtual address va." />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;page&#43;table/" /><meta property="og:image" content="https://whaleblog.github.io/" /><meta property="article:section" content="posts" />
-<meta property="article:published_time" content="2024-08-15T10:56:03+00:00" />
-<meta property="article:modified_time" content="2024-08-15T10:56:03+00:00" />
-
-
-
-
-
-    <meta property="article:section" content="courses" />
-
-    <meta property="article:section" content="notes" />
-
-
-
-    <meta property="article:published_time" content="2024-08-15 10:56:03 &#43;0000 UTC" />
-
-
-
-
-
-
-
-
-
-
-
-
-    </head>
-
-    
-        <body>
-    
-    
-        <div class="container">
-            <header class="header">
-    <span class="header__inner">
-        <a href="/" style="text-decoration: none;">
-    <div class="logo">
-        
-            <span class="logo__mark">></span>
-            <span class="logo__text ">
-                WhaleFall</span>
-            <span class="logo__cursor" style=
-                  "
-                   
-                   ">
-            </span>
-        
-    </div>
-</a>
-
-
-        <span class="header__right">
-                <nav class="menu">
-    <ul class="menu__inner"><li><a href="/about">About</a></li><li><a href="/posts">Blog</a></li><li><a href="/tags">Tags</a></li>
-    </ul>
-</nav>
-
-                <span class="menu-trigger">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path d="M0 0h24v24H0z" fill="none"/>
-                        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-                    </svg>
-                </span>
-        </span>
-    </span>
-</header>
-
-
-            <div class="content">
-                
-  <main class="post">
-
-    <div class="post-info">
-      <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock">
-          <circle cx="12" cy="12" r="10"></circle>
-          <polyline points="12 6 12 12 16 14"></polyline>
-        </svg>
-        3分钟阅读
-
-        
-      </p>
-    </div>
-
-    <article>
-      <h1 class="post-title">
-        <a href="https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;page&#43;table/">xv6 实验日志 - Page Table</a>
-      </h1>
-
-      
-
-      
-
-      
-
-      <div class="post-content">
-        <h2 id="页表">页表</h2>
-<p>这张图片很好地说明了 xv6 页表机制</p>
-<p><img alt="page table.png" src="/upload/page%20table.png"></p>
-<p>其中补充说明几点：</p>
-<ol>
-<li>
-<p>虚拟地址由三部分所组成：EXT（无实际作用，忽略），三级页表的 index，以及物理页的偏移量 offset</p>
-</li>
-<li>
-<p>每个页表占据一个 PGSIZE 的空间 （4096 bytes），每个页表内有 512 个条目，称为 PTE。每个 PTE 有 64 位，由 PPN 与 Flag 所组成。</p>
-</li>
-<li>
-<p>对于第一，第二级页表的 PPN，其所指向的是下一级页表的物理地址（由 PPN &laquo; 12 可得）。第三级页表的 PPN 指向的是虚拟地址所映射的物理页的起始地址，加上 va 的 offset 便可得到实际的 pa</p>
-</li>
-<li>
-<p>satp 寄存器指向第一级页表的物理地址</p>
-</li>
-<li>
-<p>PTE 中的 flag 在图片的下方有详细的描述</p>
-</li>
-<li>
-<p>OS 对于地址的映射有绝对的控制权，可以任意地将某个虚拟页映射到某个物理页</p>
-</li>
-<li>
-<p>虚拟地址到物理地址转换的步骤是由硬件的 MMU 实现的，OS 负责处理页表。但在 xv6 中有 walk() 函数模拟这一点，因为 xv6 通过直接写物理地址来实现内核空间与用户空间的传参</p>
-</li>
-</ol>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">// Return the address of the PTE in page table pagetable
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// that corresponds to virtual address va.  If alloc!=0,
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// create any required page-table pages.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">//
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// The risc-v Sv39 scheme has three levels of page-table
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// pages. A page-table page contains 512 64-bit PTEs.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// A 64-bit virtual address is split into five fields:
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">//   39..63 -- must be zero.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">//   30..38 -- 9 bits of level-2 index.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">//   21..29 -- 9 bits of level-1 index.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">//   12..20 -- 9 bits of level-0 index.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">//    0..11 -- 12 bits of byte offset within the page.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">pte_t</span> <span style="color:#f92672">*</span>
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">walk</span>(<span style="color:#66d9ef">pagetable_t</span> pagetable, uint64 va, <span style="color:#66d9ef">int</span> alloc)
-</span></span><span style="display:flex;"><span>{
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span>(va <span style="color:#f92672">&gt;=</span> MAXVA)
-</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">panic</span>(<span style="color:#e6db74">&#34;walk&#34;</span>);
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span>(<span style="color:#66d9ef">int</span> level <span style="color:#f92672">=</span> <span style="color:#ae81ff">2</span>; level <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>; level<span style="color:#f92672">--</span>) {
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">pte_t</span> <span style="color:#f92672">*</span>pte <span style="color:#f92672">=</span> <span style="color:#f92672">&amp;</span>pagetable[<span style="color:#a6e22e">PX</span>(level, va)];
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 根据 va 中的 index 确认 pte 的位置
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#66d9ef">if</span>(<span style="color:#f92672">*</span>pte <span style="color:#f92672">&amp;</span> PTE_V) {
-</span></span><span style="display:flex;"><span>            pagetable <span style="color:#f92672">=</span> (<span style="color:#66d9ef">pagetable_t</span>)<span style="color:#a6e22e">PTE2PA</span>(<span style="color:#f92672">*</span>pte);
-</span></span><span style="display:flex;"><span>        } <span style="color:#66d9ef">else</span> {
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span>(<span style="color:#f92672">!</span>alloc <span style="color:#f92672">||</span> (pagetable <span style="color:#f92672">=</span> (<span style="color:#66d9ef">pde_t</span><span style="color:#f92672">*</span>)<span style="color:#a6e22e">kalloc</span>()) <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>)
-</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
-</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">memset</span>(pagetable, <span style="color:#ae81ff">0</span>, PGSIZE);
-</span></span><span style="display:flex;"><span>            <span style="color:#f92672">*</span>pte <span style="color:#f92672">=</span> <span style="color:#a6e22e">PA2PTE</span>(pagetable) <span style="color:#f92672">|</span> PTE_V;
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span>pagetable[<span style="color:#a6e22e">PX</span>(<span style="color:#ae81ff">0</span>, va)];
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><h2 id="内核页表">内核页表</h2>
-<p>下面这张图描述了内核页表中 va 与 pa 的映射关系。右半部分的物理地址是由硬件设计者决定的，具体内容会写在主板手册上；而左半部分是由操作系统设计者定义的，因为老师们想让 xv6 尽可能的简单易懂，所以这里的虚拟地址到物理地址的映射，大部分是相等的。</p>
-<p>地址 0x1000 是 boot ROM 的物理地址，当你对主板上电，主板做的第一件事情就是运行存储在 boot ROM 中的代码，当boot完成之后，会跳转到地址 0x80000000，操作系统需要确保那个地址有一些数据能够接着启动操作系统</p>
-<p><img alt="memory.png" src="/upload/memory.png"></p>
-<p>可以通过 vm.c 中的 kvminit 与 memlayout.h 以及 kernel.ld 看到内核页表的映射：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">// Make a direct-map page table for the kernel.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">pagetable_t</span>
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">kvmmake</span>(<span style="color:#66d9ef">void</span>)
-</span></span><span style="display:flex;"><span>{
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">pagetable_t</span> kpgtbl;
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    kpgtbl <span style="color:#f92672">=</span> (<span style="color:#66d9ef">pagetable_t</span>) <span style="color:#a6e22e">kalloc</span>();
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">memset</span>(kpgtbl, <span style="color:#ae81ff">0</span>, PGSIZE);
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// uart registers
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">kvmmap</span>(kpgtbl, UART0, UART0, PGSIZE, PTE_R <span style="color:#f92672">|</span> PTE_W);
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// virtio mmio disk interface
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">kvmmap</span>(kpgtbl, VIRTIO0, VIRTIO0, PGSIZE, PTE_R <span style="color:#f92672">|</span> PTE_W);
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// PLIC
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">kvmmap</span>(kpgtbl, PLIC, PLIC, <span style="color:#ae81ff">0x400000</span>, PTE_R <span style="color:#f92672">|</span> PTE_W);
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// map kernel text executable and read-only.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">kvmmap</span>(kpgtbl, KERNBASE, KERNBASE, (uint64)etext<span style="color:#f92672">-</span>KERNBASE, PTE_R <span style="color:#f92672">|</span> PTE_X);
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// map kernel data and the physical RAM we&#39;ll make use of.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">kvmmap</span>(kpgtbl, (uint64)etext, (uint64)etext, PHYSTOP<span style="color:#f92672">-</span>(uint64)etext, PTE_R <span style="color:#f92672">|</span> PTE_W);
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// etext 指向 text 段的末尾，后面是 data 段，在 kernel.ld 定义
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// map the trampoline for trap entry/exit to
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// the highest virtual address in the kernel.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">kvmmap</span>(kpgtbl, TRAMPOLINE, (uint64)trampoline, PGSIZE, PTE_R <span style="color:#f92672">|</span> PTE_X);
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// map kernel stacks
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">proc_mapstacks</span>(kpgtbl);
-</span></span><span style="display:flex;"><span>      
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> kpgtbl;
-</span></span><span style="display:flex;"><span>}
-</span></span><span style="display:flex;"><span> 
-</span></span><span style="display:flex;"><span><span style="color:#75715e">// Initialize the one kernel_pagetable
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">void</span>
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">kvminit</span>(<span style="color:#66d9ef">void</span>)
-</span></span><span style="display:flex;"><span>{
-</span></span><span style="display:flex;"><span>    kernel_pagetable <span style="color:#f92672">=</span> <span style="color:#a6e22e">kvmmake</span>();
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><p>其中 TRAMPOLINE 被映射了两次，分别在与物理地址相等的虚拟地址，以及在 va 的最高处。这说明页表的映射不必要是一一对应，多对多也可以</p>
-<p>kernel stack 也会被映射两次，在 kvmmake 最后会调用 proc_mapstacks，那里又会将本映射在 kernel data 段的内核栈又映射到 va 的高处。但实际使用的是后者的映射，毕竟有保护页保护</p>
-<blockquote>
-<p>学生提问：对于不同的进程会有不同的kernel stack吗？</p>
-<p>Frans：答案是的。每一个用户进程都有一个对应的kernel stack</p>
-</blockquote>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">// Allocate a page for each process&#39;s kernel stack.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// Map it high in memory, followed by an invalid
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// guard page.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">void</span>
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">proc_mapstacks</span>(<span style="color:#66d9ef">pagetable_t</span> kpgtbl) {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>p;
-</span></span><span style="display:flex;"><span>      
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span>(p <span style="color:#f92672">=</span> proc; p <span style="color:#f92672">&lt;</span> <span style="color:#f92672">&amp;</span>proc[NPROC]; p<span style="color:#f92672">++</span>) {
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>pa <span style="color:#f92672">=</span> <span style="color:#a6e22e">kalloc</span>();
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span>(pa <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>)
-</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">panic</span>(<span style="color:#e6db74">&#34;kalloc&#34;</span>);
-</span></span><span style="display:flex;"><span>        uint64 va <span style="color:#f92672">=</span> <span style="color:#a6e22e">KSTACK</span>((<span style="color:#66d9ef">int</span>) (p <span style="color:#f92672">-</span> proc));
-</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">kvmmap</span>(kpgtbl, va, (uint64)pa, PGSIZE, PTE_R <span style="color:#f92672">|</span> PTE_W);
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><p>其中 KSTACK 宏在 memlayout.h 定义</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">#define KSTACK(p) (TRAMPOLINE - (p)*2*PGSIZE - 3*PGSIZE)
-</span></span></span></code></pre></div><h2 id="用户页表">用户页表</h2>
-<p>用户页表的定义就简单很多，毕竟不需要考虑设备</p>
-<p><img alt="user pgtbl.png" src="/upload/user%20pgtbl.png"></p>
-<p>和内核页表的映射不一样的是，用户空间的代码是从地址 0 开始的，这在调试的时候可辅助确认是处于用户还是内核。</p>
-<p>trampoline 都映射到了虚拟地址的顶部，毕竟在异常处理时会从用户页表切换到内核页表，必须保证此段代码在二者中具有相同的 va，不然就乱套了</p>
-<p>trapframe 结构则放在了 trapoline 底下，详情请见 <a href="https://whalefall.site/archives/xv6-trap">xv6 实验日志 - Trap</a></p>
-<p>MAXVA 在 riscv.h 中定义，很显然，与虚拟地址有意义的位数相关</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">#define MAXVA (1L &lt;&lt; (9 + 9 + 9 + 12 - 1))
-</span></span></span></code></pre></div>
-      </div>
-    </article>
-
-    <hr />
-
-    <div class="post-info">
-      
-    <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg>
-
-        <span class="tag"><a href="https://whaleblog.github.io/tags/mit-6.s081/">mit-6.s081</a></span>
-        <span class="tag"><a href="https://whaleblog.github.io/tags/xv6/">xv6</a></span>
-        <span class="tag"><a href="https://whaleblog.github.io/tags/os/">OS</a></span>
-        
-    </p>
-
-      
-    <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-folder meta-icon"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-
-        <span class="tag"><a href="https://whaleblog.github.io/categories/courses/">courses</a></span>
-        <span class="tag"><a href="https://whaleblog.github.io/categories/notes/">notes</a></span>
-        
-    </p>
-
-
-      <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-          <polyline points="10 9 9 9 8 9"></polyline>
-        </svg>
-        510字
-      </p>
-
-      <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="16" y1="2" x2="16" y2="6"></line>
-          <line x1="8" y1="2" x2="8" y2="6"></line>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-        </svg>
-        
-          2024-08-15 18:56
-        
-
-         
-          
-        
-      </p>
-    </div>
-      <hr />
-      <div class="sharing-buttons">
-        
-
-  
-    
-    
-  
-
-
-
-
-  
-      
-        
-    
-  
-
-
-
-
-  
-    
-      
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-			
-    
-  
-
-
-
-
-  
-      
-    
-  
-
-
-<style>
-.social-icons {
-  display: flex;
-  align-items: center;
-  gap: 20px;  
-  margin-top: 15px;
-}
-.social-icons a svg {
-  width: 20px;  
-  height: 20px;
-}
-</style>
-
-<div class="social-icons">
-  
-  <a href="mailto:166845494@qq.com" target="_self" rel="noopener" aria-label="Email me" title="Email me">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-      <polyline points="22,6 12,13 2,6"></polyline>
-    </svg>
-  </a>
-
-  
-  <a href="https://github.com/WhaleFall-UESTC" target="_blank" rel="noopener" aria-label="Follow on GitHub" title="Follow on GitHub">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke-width="2">
-      <path d="M12 0C5.373 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.298 24 12c0-6.627-5.373-12-12-12z"/>
-    </svg>
-  </a>
-</div>
-
-      </div>
-
-    
-    <div class="pagination">
-        
-        <div class="pagination__title">
-            <span class="pagination__title-h">浏览其他文章</span>
-            <hr />
-        </div>
-        
-
-        <div class="pagination__buttons">
-            
-            <span class="button previous">
-                <a href="https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;interrupts/">
-                    <span class="button__icon">←</span>
-                    <span class="button__text">xv6 实验日志 - Interrupts</span>
-                </a>
-            </span>
-            
-
-            
-            <span class="button next">
-                <a href="https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;trap/">
-                    <span class="button__text">xv6 实验日志 - Trap</span>
-                    <span class="button__icon">→</span>
-                </a>
-            </span>
-            
-        </div>
-    </div>
-
-
-    
-
-    
-
-    
-
-  </main>
-
-            </div>
-
-            
-                <footer class="footer">
-    
-    
-</footer>
-
-            
-        </div>
-
-        
-
-
-
-<script type="text/javascript" src="/bundle.min.ac2a4bcaed631ec2dc154407be7f09fc28da37de71fae6dee6711b2a3d1622770f87d3cda22c460e9a68ff619bdb1dd75cb7a5d33f159a54e419736cc4541087.js" integrity="sha512-rCpLyu1jHsLcFUQHvn8J/CjaN95x&#43;ube5nEbKj0WIncPh9PNoixGDppo/2Gb2x3XXLel0z8VmlTkGXNsxFQQhw=="></script>
-
-
-
-
-    </body>
-</html>
+// Return the address of the PTE in page table pagetable // that corresponds to virtual address va."><meta property="og:type" content="article"><meta property="og:url" content="https://whaleblog.github.io/posts/xv6+%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97+-+page+table/"><meta property="og:image" content="https://whaleblog.github.io/"><meta property="article:section" content="posts"><meta property="article:published_time" content="2024-08-15T10:56:03+00:00"><meta property="article:modified_time" content="2024-08-15T10:56:03+00:00"><meta property="article:section" content="courses"><meta property="article:section" content="notes"><meta property="article:published_time" content="2024-08-15 10:56:03 +0000 UTC"></head><body><div class=container><header class=header><span class=header__inner><a href=/ style=text-decoration:none><div class=logo><span class=logo__mark>></span>
+<span class=logo__text>WhaleFall</span>
+<span class=logo__cursor></span></div></a><span class=header__right><nav class=menu><ul class=menu__inner><li><a href=/about>About</a></li><li><a href=/posts>Blog</a></li><li><a href=/tags>Tags</a></li></ul></nav><span class=menu-trigger><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></span></span></span></header><div class=content><main class=post><div class=post-info><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+3分钟阅读</p></div><article><h1 class=post-title><a href=https://whaleblog.github.io/posts/xv6+%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97+-+page+table/>xv6 实验日志 - Page Table</a></h1><div class=post-content><h2 id=页表>页表</h2><p>这张图片很好地说明了 xv6 页表机制</p><p><img alt="page table.png" src=/upload/page%20table.png></p><p>其中补充说明几点：</p><ol><li><p>虚拟地址由三部分所组成：EXT（无实际作用，忽略），三级页表的 index，以及物理页的偏移量 offset</p></li><li><p>每个页表占据一个 PGSIZE 的空间 （4096 bytes），每个页表内有 512 个条目，称为 PTE。每个 PTE 有 64 位，由 PPN 与 Flag 所组成。</p></li><li><p>对于第一，第二级页表的 PPN，其所指向的是下一级页表的物理地址（由 PPN &#171; 12 可得）。第三级页表的 PPN 指向的是虚拟地址所映射的物理页的起始地址，加上 va 的 offset 便可得到实际的 pa</p></li><li><p>satp 寄存器指向第一级页表的物理地址</p></li><li><p>PTE 中的 flag 在图片的下方有详细的描述</p></li><li><p>OS 对于地址的映射有绝对的控制权，可以任意地将某个虚拟页映射到某个物理页</p></li><li><p>虚拟地址到物理地址转换的步骤是由硬件的 MMU 实现的，OS 负责处理页表。但在 xv6 中有 walk() 函数模拟这一点，因为 xv6 通过直接写物理地址来实现内核空间与用户空间的传参</p></li></ol><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=display:flex><span><span style=color:#75715e>// Return the address of the PTE in page table pagetable
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// that corresponds to virtual address va.  If alloc!=0,
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// create any required page-table pages.
+</span></span></span><span style=display:flex><span><span style=color:#75715e>//
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// The risc-v Sv39 scheme has three levels of page-table
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// pages. A page-table page contains 512 64-bit PTEs.
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// A 64-bit virtual address is split into five fields:
+</span></span></span><span style=display:flex><span><span style=color:#75715e>//   39..63 -- must be zero.
+</span></span></span><span style=display:flex><span><span style=color:#75715e>//   30..38 -- 9 bits of level-2 index.
+</span></span></span><span style=display:flex><span><span style=color:#75715e>//   21..29 -- 9 bits of level-1 index.
+</span></span></span><span style=display:flex><span><span style=color:#75715e>//   12..20 -- 9 bits of level-0 index.
+</span></span></span><span style=display:flex><span><span style=color:#75715e>//    0..11 -- 12 bits of byte offset within the page.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>pte_t</span> <span style=color:#f92672>*</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>walk</span>(<span style=color:#66d9ef>pagetable_t</span> pagetable, uint64 va, <span style=color:#66d9ef>int</span> alloc)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span>(va <span style=color:#f92672>&gt;=</span> MAXVA)
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>panic</span>(<span style=color:#e6db74>&#34;walk&#34;</span>);
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span>(<span style=color:#66d9ef>int</span> level <span style=color:#f92672>=</span> <span style=color:#ae81ff>2</span>; level <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span>; level<span style=color:#f92672>--</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>pte_t</span> <span style=color:#f92672>*</span>pte <span style=color:#f92672>=</span> <span style=color:#f92672>&amp;</span>pagetable[<span style=color:#a6e22e>PX</span>(level, va)];
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// 根据 va 中的 index 确认 pte 的位置
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>if</span>(<span style=color:#f92672>*</span>pte <span style=color:#f92672>&amp;</span> PTE_V) {
+</span></span><span style=display:flex><span>            pagetable <span style=color:#f92672>=</span> (<span style=color:#66d9ef>pagetable_t</span>)<span style=color:#a6e22e>PTE2PA</span>(<span style=color:#f92672>*</span>pte);
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span>(<span style=color:#f92672>!</span>alloc <span style=color:#f92672>||</span> (pagetable <span style=color:#f92672>=</span> (<span style=color:#66d9ef>pde_t</span><span style=color:#f92672>*</span>)<span style=color:#a6e22e>kalloc</span>()) <span style=color:#f92672>==</span> <span style=color:#ae81ff>0</span>)
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> <span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>memset</span>(pagetable, <span style=color:#ae81ff>0</span>, PGSIZE);
+</span></span><span style=display:flex><span>            <span style=color:#f92672>*</span>pte <span style=color:#f92672>=</span> <span style=color:#a6e22e>PA2PTE</span>(pagetable) <span style=color:#f92672>|</span> PTE_V;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#f92672>&amp;</span>pagetable[<span style=color:#a6e22e>PX</span>(<span style=color:#ae81ff>0</span>, va)];
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h2 id=内核页表>内核页表</h2><p>下面这张图描述了内核页表中 va 与 pa 的映射关系。右半部分的物理地址是由硬件设计者决定的，具体内容会写在主板手册上；而左半部分是由操作系统设计者定义的，因为老师们想让 xv6 尽可能的简单易懂，所以这里的虚拟地址到物理地址的映射，大部分是相等的。</p><p>地址 0x1000 是 boot ROM 的物理地址，当你对主板上电，主板做的第一件事情就是运行存储在 boot ROM 中的代码，当boot完成之后，会跳转到地址 0x80000000，操作系统需要确保那个地址有一些数据能够接着启动操作系统</p><p><img alt=memory.png src=/upload/memory.png></p><p>可以通过 vm.c 中的 kvminit 与 memlayout.h 以及 kernel.ld 看到内核页表的映射：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=display:flex><span><span style=color:#75715e>// Make a direct-map page table for the kernel.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>pagetable_t</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>kvmmake</span>(<span style=color:#66d9ef>void</span>)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pagetable_t</span> kpgtbl;
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    kpgtbl <span style=color:#f92672>=</span> (<span style=color:#66d9ef>pagetable_t</span>) <span style=color:#a6e22e>kalloc</span>();
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>memset</span>(kpgtbl, <span style=color:#ae81ff>0</span>, PGSIZE);
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// uart registers
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>kvmmap</span>(kpgtbl, UART0, UART0, PGSIZE, PTE_R <span style=color:#f92672>|</span> PTE_W);
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// virtio mmio disk interface
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>kvmmap</span>(kpgtbl, VIRTIO0, VIRTIO0, PGSIZE, PTE_R <span style=color:#f92672>|</span> PTE_W);
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// PLIC
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>kvmmap</span>(kpgtbl, PLIC, PLIC, <span style=color:#ae81ff>0x400000</span>, PTE_R <span style=color:#f92672>|</span> PTE_W);
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// map kernel text executable and read-only.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>kvmmap</span>(kpgtbl, KERNBASE, KERNBASE, (uint64)etext<span style=color:#f92672>-</span>KERNBASE, PTE_R <span style=color:#f92672>|</span> PTE_X);
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// map kernel data and the physical RAM we&#39;ll make use of.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>kvmmap</span>(kpgtbl, (uint64)etext, (uint64)etext, PHYSTOP<span style=color:#f92672>-</span>(uint64)etext, PTE_R <span style=color:#f92672>|</span> PTE_W);
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// etext 指向 text 段的末尾，后面是 data 段，在 kernel.ld 定义
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// map the trampoline for trap entry/exit to
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// the highest virtual address in the kernel.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>kvmmap</span>(kpgtbl, TRAMPOLINE, (uint64)trampoline, PGSIZE, PTE_R <span style=color:#f92672>|</span> PTE_X);
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// map kernel stacks
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>proc_mapstacks</span>(kpgtbl);
+</span></span><span style=display:flex><span>      
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> kpgtbl;
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span><span style=color:#75715e>// Initialize the one kernel_pagetable
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>void</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>kvminit</span>(<span style=color:#66d9ef>void</span>)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    kernel_pagetable <span style=color:#f92672>=</span> <span style=color:#a6e22e>kvmmake</span>();
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>其中 TRAMPOLINE 被映射了两次，分别在与物理地址相等的虚拟地址，以及在 va 的最高处。这说明页表的映射不必要是一一对应，多对多也可以</p><p>kernel stack 也会被映射两次，在 kvmmake 最后会调用 proc_mapstacks，那里又会将本映射在 kernel data 段的内核栈又映射到 va 的高处。但实际使用的是后者的映射，毕竟有保护页保护</p><blockquote><p>学生提问：对于不同的进程会有不同的kernel stack吗？</p><p>Frans：答案是的。每一个用户进程都有一个对应的kernel stack</p></blockquote><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=display:flex><span><span style=color:#75715e>// Allocate a page for each process&#39;s kernel stack.
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// Map it high in memory, followed by an invalid
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// guard page.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>void</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>proc_mapstacks</span>(<span style=color:#66d9ef>pagetable_t</span> kpgtbl) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>struct</span> proc <span style=color:#f92672>*</span>p;
+</span></span><span style=display:flex><span>      
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span>(p <span style=color:#f92672>=</span> proc; p <span style=color:#f92672>&lt;</span> <span style=color:#f92672>&amp;</span>proc[NPROC]; p<span style=color:#f92672>++</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>char</span> <span style=color:#f92672>*</span>pa <span style=color:#f92672>=</span> <span style=color:#a6e22e>kalloc</span>();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span>(pa <span style=color:#f92672>==</span> <span style=color:#ae81ff>0</span>)
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>panic</span>(<span style=color:#e6db74>&#34;kalloc&#34;</span>);
+</span></span><span style=display:flex><span>        uint64 va <span style=color:#f92672>=</span> <span style=color:#a6e22e>KSTACK</span>((<span style=color:#66d9ef>int</span>) (p <span style=color:#f92672>-</span> proc));
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>kvmmap</span>(kpgtbl, va, (uint64)pa, PGSIZE, PTE_R <span style=color:#f92672>|</span> PTE_W);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>其中 KSTACK 宏在 memlayout.h 定义</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=display:flex><span><span style=color:#75715e>#define KSTACK(p) (TRAMPOLINE - (p)*2*PGSIZE - 3*PGSIZE)
+</span></span></span></code></pre></div><h2 id=用户页表>用户页表</h2><p>用户页表的定义就简单很多，毕竟不需要考虑设备</p><p><img alt="user pgtbl.png" src=/upload/user%20pgtbl.png></p><p>和内核页表的映射不一样的是，用户空间的代码是从地址 0 开始的，这在调试的时候可辅助确认是处于用户还是内核。</p><p>trampoline 都映射到了虚拟地址的顶部，毕竟在异常处理时会从用户页表切换到内核页表，必须保证此段代码在二者中具有相同的 va，不然就乱套了</p><p>trapframe 结构则放在了 trapoline 底下，详情请见 <a href=https://whalefall.site/archives/xv6-trap>xv6 实验日志 - Trap</a></p><p>MAXVA 在 riscv.h 中定义，很显然，与虚拟地址有意义的位数相关</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=display:flex><span><span style=color:#75715e>#define MAXVA (1L &lt;&lt; (9 + 9 + 9 + 12 - 1))
+</span></span></span></code></pre></div></div></article><hr><div class=post-info><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83.0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7" y2="7"/></svg>
+<span class=tag><a href=https://whaleblog.github.io/tags/mit-6.s081/>mit-6.s081</a></span>
+<span class=tag><a href=https://whaleblog.github.io/tags/xv6/>xv6</a></span>
+<span class=tag><a href=https://whaleblog.github.io/tags/os/>OS</a></span></p><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-folder meta-icon"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+<span class=tag><a href=https://whaleblog.github.io/categories/courses/>courses</a></span>
+<span class=tag><a href=https://whaleblog.github.io/categories/notes/>notes</a></span></p><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6A2 2 0 004 4v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+510字</p><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+2024-08-15 18:56</p></div><hr><div class=sharing-buttons><style>.social-icons{display:flex;align-items:center;gap:20px;margin-top:15px}.social-icons a svg{width:20px;height:20px}</style><div class=social-icons><a href=mailto:166845494@qq.com target=_self rel=noopener aria-label="Email me" title="Email me"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1.0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1.0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+</a><a href=https://github.com/WhaleFall-UESTC target=_blank rel=noopener aria-label="Follow on GitHub" title="Follow on GitHub"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentcolor" stroke-width="2"><path d="M12 0C5.373.0.0 5.373.0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931.0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176.0.0 1.008-.322 3.301 1.23A11.509 11.509.0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221.0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.298 24 12c0-6.627-5.373-12-12-12z"/></svg></a></div></div><div class=pagination><div class=pagination__title><span class=pagination__title-h>浏览其他文章</span><hr></div><div class=pagination__buttons><span class="button previous"><a href=https://whaleblog.github.io/posts/xv6+%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97+-+interrupts/><span class=button__icon>←</span>
+<span class=button__text>xv6 实验日志 - Interrupts</span>
+</a></span><span class="button next"><a href=https://whaleblog.github.io/posts/xv6+%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97+-+trap/><span class=button__text>xv6 实验日志 - Trap</span>
+<span class=button__icon>→</span></a></span></div></div></main></div><footer class=footer></footer></div><script type=text/javascript src=/bundle.min.ac2a4bcaed631ec2dc154407be7f09fc28da37de71fae6dee6711b2a3d1622770f87d3cda22c460e9a68ff619bdb1dd75cb7a5d33f159a54e419736cc4541087.js integrity="sha512-rCpLyu1jHsLcFUQHvn8J/CjaN95x+ube5nEbKj0WIncPh9PNoixGDppo/2Gb2x3XXLel0z8VmlTkGXNsxFQQhw=="></script></body></html>

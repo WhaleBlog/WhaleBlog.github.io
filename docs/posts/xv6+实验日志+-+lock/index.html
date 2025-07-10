@@ -1,12 +1,4 @@
-<!DOCTYPE html>
-<html lang="zh">
-    <head>
-        <meta charset="UTF-8">
-<meta http-equiv="X-UA-Compatible" content="ie=edge">
-
-<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<meta name="author" content="">
-<meta name="description" content="刚开始接触这个概念的时候觉得锁更像是通行证一类的东西。问了下 AI，它这么和我解释：
+<!doctype html><html lang=zh><head><meta charset=UTF-8><meta http-equiv=X-UA-Compatible content="ie=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=author content><meta name=description content="刚开始接触这个概念的时候觉得锁更像是通行证一类的东西。问了下 AI，它这么和我解释：
 锁（Lock）通常用于确保同一时间只有一个进程或线程能够访问某个资源。当进程或线程想要访问资源时，它必须先获得锁，完成操作后释放锁。这有点像是进入一个房间，你必须拿到钥匙（锁）才能进入，用完后再把钥匙还回去，这样其他人才能使用
 锁就是一个对象，就像其他在内核中的对象一样。有一个结构体叫做 lock，它包含了一些字段，这些字段中维护了锁的状态。锁有非常直观的 API：
 acquire，接收指向 lock 的指针作为参数。acquire 确保了在任何时间，只会有一个进程能够成功的获取锁
@@ -19,40 +11,8 @@ release，也接收指向 lock 的指针作为参数。在同一时间尝试获�
 但这条规则又很矛盾：这条规则某种程度上来说又太过严格了。如果有两个进程共享一个数据结构，并且其中一个进程会更新这个数据结构，在某些场合不加锁也可以正常工作；而有时候这个规则又太过宽松了。除了共享的数据，在一些其他场合也需要锁，例如对于 printf，如果我们将一个字符串传递给它，xv6 会尝试原子性的将整个字符串输出，而不是与其他进程的 printf 交织输出。尽管这里没有共享的数据结构，但在这里锁仍然很有用处，因为我们想要printf的输出也是序列化的
 好吧，这条规则并不完美，但是它已经是一个足够好的指导准则
 自动加锁 如果按照刚刚的简单规则，一旦我们有了一个共享的数据结构，任何操作这个共享数据结构都需要获取锁，那么对其进行操作时自动地获取锁即可
-但是这样并不行，假如说我要把 ~/dir1/x 文件 mv 到 ~/dir2/y，那么按照这条规则，先对 x 加锁，删除 x，然后释放锁；再对 y 加锁，创建 y，接着释放锁。" />
-<meta name="keywords" content=", mit-6.s081, xv6, OS" />
-<meta name="robots" content="noodp" />
-<meta name="theme-color" content="" />
-<link rel="canonical" href="https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;lock/" />
-
-
-    <title>
-        
-            xv6 实验日志 - Lock :: WhaleFall&#39;s Blog 
-        
-    </title>
-
-
-
-
-
-  <link rel="stylesheet" href="/main.min.ab5336003ba331300318b49292c672210905baf1ef5410a739f647e70c8808fa.css" integrity="sha256-q1M2ADujMTADGLSSksZyIQkFuvHvVBCnOfZH5wyICPo=" crossorigin="anonymous">
-
-
-
-
-
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="manifest" href="/site.webmanifest">
-    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="">
-    <link rel="shortcut icon" href="/favicon.ico">
-    <meta name="msapplication-TileColor" content="">
-
-
-<meta itemprop="name" content="xv6 实验日志 - Lock">
-<meta itemprop="description" content="刚开始接触这个概念的时候觉得锁更像是通行证一类的东西。问了下 AI，它这么和我解释：
+但是这样并不行，假如说我要把 ~/dir1/x 文件 mv 到 ~/dir2/y，那么按照这条规则，先对 x 加锁，删除 x，然后释放锁；再对 y 加锁，创建 y，接着释放锁。"><meta name=keywords content=",mit-6.s081,xv6,OS"><meta name=robots content="noodp"><meta name=theme-color content><link rel=canonical href=https://whaleblog.github.io/posts/xv6+%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97+-+lock/><title>xv6 实验日志 - Lock :: WhaleFall's Blog
+</title><link rel=stylesheet href=/main.min.ab5336003ba331300318b49292c672210905baf1ef5410a739f647e70c8808fa.css integrity="sha256-q1M2ADujMTADGLSSksZyIQkFuvHvVBCnOfZH5wyICPo=" crossorigin=anonymous><link rel=apple-touch-icon sizes=180x180 href=/apple-touch-icon.png><link rel=icon type=image/png sizes=32x32 href=/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicon-16x16.png><link rel=manifest href=/site.webmanifest><link rel=mask-icon href=/safari-pinned-tab.svg color><link rel="shortcut icon" href=/favicon.ico><meta name=msapplication-TileColor content><meta itemprop=name content="xv6 实验日志 - Lock"><meta itemprop=description content="刚开始接触这个概念的时候觉得锁更像是通行证一类的东西。问了下 AI，它这么和我解释：
 锁（Lock）通常用于确保同一时间只有一个进程或线程能够访问某个资源。当进程或线程想要访问资源时，它必须先获得锁，完成操作后释放锁。这有点像是进入一个房间，你必须拿到钥匙（锁）才能进入，用完后再把钥匙还回去，这样其他人才能使用
 锁就是一个对象，就像其他在内核中的对象一样。有一个结构体叫做 lock，它包含了一些字段，这些字段中维护了锁的状态。锁有非常直观的 API：
 acquire，接收指向 lock 的指针作为参数。acquire 确保了在任何时间，只会有一个进程能够成功的获取锁
@@ -65,13 +25,7 @@ release，也接收指向 lock 的指针作为参数。在同一时间尝试获�
 但这条规则又很矛盾：这条规则某种程度上来说又太过严格了。如果有两个进程共享一个数据结构，并且其中一个进程会更新这个数据结构，在某些场合不加锁也可以正常工作；而有时候这个规则又太过宽松了。除了共享的数据，在一些其他场合也需要锁，例如对于 printf，如果我们将一个字符串传递给它，xv6 会尝试原子性的将整个字符串输出，而不是与其他进程的 printf 交织输出。尽管这里没有共享的数据结构，但在这里锁仍然很有用处，因为我们想要printf的输出也是序列化的
 好吧，这条规则并不完美，但是它已经是一个足够好的指导准则
 自动加锁 如果按照刚刚的简单规则，一旦我们有了一个共享的数据结构，任何操作这个共享数据结构都需要获取锁，那么对其进行操作时自动地获取锁即可
-但是这样并不行，假如说我要把 ~/dir1/x 文件 mv 到 ~/dir2/y，那么按照这条规则，先对 x 加锁，删除 x，然后释放锁；再对 y 加锁，创建 y，接着释放锁。"><meta itemprop="datePublished" content="2024-08-19T20:07:43+00:00" />
-<meta itemprop="dateModified" content="2024-08-19T20:07:43+00:00" />
-<meta itemprop="wordCount" content="507"><meta itemprop="image" content="https://whaleblog.github.io/" />
-<meta itemprop="keywords" content="mit-6.s081,xv6,OS," />
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:image" content="https://whaleblog.github.io/" /><meta name="twitter:title" content="xv6 实验日志 - Lock"/>
-<meta name="twitter:description" content="刚开始接触这个概念的时候觉得锁更像是通行证一类的东西。问了下 AI，它这么和我解释：
+但是这样并不行，假如说我要把 ~/dir1/x 文件 mv 到 ~/dir2/y，那么按照这条规则，先对 x 加锁，删除 x，然后释放锁；再对 y 加锁，创建 y，接着释放锁。"><meta itemprop=datePublished content="2024-08-19T20:07:43+00:00"><meta itemprop=dateModified content="2024-08-19T20:07:43+00:00"><meta itemprop=wordCount content="507"><meta itemprop=image content="https://whaleblog.github.io/"><meta itemprop=keywords content="mit-6.s081,xv6,OS,"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://whaleblog.github.io/"><meta name=twitter:title content="xv6 实验日志 - Lock"><meta name=twitter:description content="刚开始接触这个概念的时候觉得锁更像是通行证一类的东西。问了下 AI，它这么和我解释：
 锁（Lock）通常用于确保同一时间只有一个进程或线程能够访问某个资源。当进程或线程想要访问资源时，它必须先获得锁，完成操作后释放锁。这有点像是进入一个房间，你必须拿到钥匙（锁）才能进入，用完后再把钥匙还回去，这样其他人才能使用
 锁就是一个对象，就像其他在内核中的对象一样。有一个结构体叫做 lock，它包含了一些字段，这些字段中维护了锁的状态。锁有非常直观的 API：
 acquire，接收指向 lock 的指针作为参数。acquire 确保了在任何时间，只会有一个进程能够成功的获取锁
@@ -84,12 +38,7 @@ release，也接收指向 lock 的指针作为参数。在同一时间尝试获�
 但这条规则又很矛盾：这条规则某种程度上来说又太过严格了。如果有两个进程共享一个数据结构，并且其中一个进程会更新这个数据结构，在某些场合不加锁也可以正常工作；而有时候这个规则又太过宽松了。除了共享的数据，在一些其他场合也需要锁，例如对于 printf，如果我们将一个字符串传递给它，xv6 会尝试原子性的将整个字符串输出，而不是与其他进程的 printf 交织输出。尽管这里没有共享的数据结构，但在这里锁仍然很有用处，因为我们想要printf的输出也是序列化的
 好吧，这条规则并不完美，但是它已经是一个足够好的指导准则
 自动加锁 如果按照刚刚的简单规则，一旦我们有了一个共享的数据结构，任何操作这个共享数据结构都需要获取锁，那么对其进行操作时自动地获取锁即可
-但是这样并不行，假如说我要把 ~/dir1/x 文件 mv 到 ~/dir2/y，那么按照这条规则，先对 x 加锁，删除 x，然后释放锁；再对 y 加锁，创建 y，接着释放锁。"/>
-
-
-
-    <meta property="og:title" content="xv6 实验日志 - Lock" />
-<meta property="og:description" content="刚开始接触这个概念的时候觉得锁更像是通行证一类的东西。问了下 AI，它这么和我解释：
+但是这样并不行，假如说我要把 ~/dir1/x 文件 mv 到 ~/dir2/y，那么按照这条规则，先对 x 加锁，删除 x，然后释放锁；再对 y 加锁，创建 y，接着释放锁。"><meta property="og:title" content="xv6 实验日志 - Lock"><meta property="og:description" content="刚开始接触这个概念的时候觉得锁更像是通行证一类的东西。问了下 AI，它这么和我解释：
 锁（Lock）通常用于确保同一时间只有一个进程或线程能够访问某个资源。当进程或线程想要访问资源时，它必须先获得锁，完成操作后释放锁。这有点像是进入一个房间，你必须拿到钥匙（锁）才能进入，用完后再把钥匙还回去，这样其他人才能使用
 锁就是一个对象，就像其他在内核中的对象一样。有一个结构体叫做 lock，它包含了一些字段，这些字段中维护了锁的状态。锁有非常直观的 API：
 acquire，接收指向 lock 的指针作为参数。acquire 确保了在任何时间，只会有一个进程能够成功的获取锁
@@ -102,439 +51,55 @@ release，也接收指向 lock 的指针作为参数。在同一时间尝试获�
 但这条规则又很矛盾：这条规则某种程度上来说又太过严格了。如果有两个进程共享一个数据结构，并且其中一个进程会更新这个数据结构，在某些场合不加锁也可以正常工作；而有时候这个规则又太过宽松了。除了共享的数据，在一些其他场合也需要锁，例如对于 printf，如果我们将一个字符串传递给它，xv6 会尝试原子性的将整个字符串输出，而不是与其他进程的 printf 交织输出。尽管这里没有共享的数据结构，但在这里锁仍然很有用处，因为我们想要printf的输出也是序列化的
 好吧，这条规则并不完美，但是它已经是一个足够好的指导准则
 自动加锁 如果按照刚刚的简单规则，一旦我们有了一个共享的数据结构，任何操作这个共享数据结构都需要获取锁，那么对其进行操作时自动地获取锁即可
-但是这样并不行，假如说我要把 ~/dir1/x 文件 mv 到 ~/dir2/y，那么按照这条规则，先对 x 加锁，删除 x，然后释放锁；再对 y 加锁，创建 y，接着释放锁。" />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;lock/" /><meta property="og:image" content="https://whaleblog.github.io/" /><meta property="article:section" content="posts" />
-<meta property="article:published_time" content="2024-08-19T20:07:43+00:00" />
-<meta property="article:modified_time" content="2024-08-19T20:07:43+00:00" />
-
-
-
-
-
-    <meta property="article:section" content="notes" />
-
-    <meta property="article:section" content="courses" />
-
-
-
-    <meta property="article:published_time" content="2024-08-19 20:07:43 &#43;0000 UTC" />
-
-
-
-
-
-
-
-
-
-
-
-
-    </head>
-
-    
-        <body>
-    
-    
-        <div class="container">
-            <header class="header">
-    <span class="header__inner">
-        <a href="/" style="text-decoration: none;">
-    <div class="logo">
-        
-            <span class="logo__mark">></span>
-            <span class="logo__text ">
-                WhaleFall</span>
-            <span class="logo__cursor" style=
-                  "
-                   
-                   ">
-            </span>
-        
-    </div>
-</a>
-
-
-        <span class="header__right">
-                <nav class="menu">
-    <ul class="menu__inner"><li><a href="/about">About</a></li><li><a href="/posts">Blog</a></li><li><a href="/tags">Tags</a></li>
-    </ul>
-</nav>
-
-                <span class="menu-trigger">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path d="M0 0h24v24H0z" fill="none"/>
-                        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-                    </svg>
-                </span>
-        </span>
-    </span>
-</header>
-
-
-            <div class="content">
-                
-  <main class="post">
-
-    <div class="post-info">
-      <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock">
-          <circle cx="12" cy="12" r="10"></circle>
-          <polyline points="12 6 12 12 16 14"></polyline>
-        </svg>
-        3分钟阅读
-
-        
-      </p>
-    </div>
-
-    <article>
-      <h1 class="post-title">
-        <a href="https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;lock/">xv6 实验日志 - Lock</a>
-      </h1>
-
-      
-
-      
-
-      
-
-      <div class="post-content">
-        <p>刚开始接触这个概念的时候觉得锁更像是通行证一类的东西。问了下 AI，它这么和我解释：</p>
-<p>锁（Lock）通常用于确保同一时间只有一个进程或线程能够访问某个资源。当进程或线程想要访问资源时，它必须先获得锁，完成操作后释放锁。这有点像是进入一个房间，你必须拿到钥匙（锁）才能进入，用完后再把钥匙还回去，这样其他人才能使用</p>
-<p>锁就是一个对象，就像其他在内核中的对象一样。有一个结构体叫做 lock，它包含了一些字段，这些字段中维护了锁的状态。锁有非常直观的 API：</p>
-<ul>
-<li>
-<p>acquire，接收指向 lock 的指针作为参数。acquire 确保了在任何时间，只会有一个进程能够成功的获取锁</p>
-</li>
-<li>
-<p>release，也接收指向 lock 的指针作为参数。在同一时间尝试获取锁的其他进程需要等待，直到持有锁的进程对锁调用 release</p>
-</li>
-</ul>
-<p>锁的 acquire 和 release 之间的代码，通常被称为 critical section</p>
-<p>之所以被称为 critical section，是因为通常会在这里以原子的方式执行共享数据的更新。所以基本上来说，如果在 acquire 和 release 之间有多条指令，它们要么会一起执行，要么一条也不会执行。所以永远也不可能看到位于 critical section 中的代码，如同在 race condition 中一样在多个 CPU 上交织的执行，所以这样就能避免 race condition</p>
-<p>锁序列化了代码的执行。如果两个处理器想要进入到同一个 critical section 中，只会有一个能成功进入，另一个处理器会在第一个处理器从 critical section 中退出之后再进入。所以这里完全没有并行执行</p>
-<p>锁的使用完全是由程序员决定的。如果你想要一段代码具备原子性，那么其实是由程序员决定是否增加锁的 acquire 和 release。其次，代码不会自动加锁，程序员自己要确定好是否将锁与数据结构关联，并在适当的位置增加锁的 acquire 和 release</p>
-<h2 id="什么时候用锁">什么时候用锁</h2>
-<h3 id="一个简单的规则">一个简单的规则</h3>
-<p>一个非常保守同时也是非常简单的规则：如果两个进程访问了一个共享的数据结构，并且其中一个进程会更新共享的数据结构，那么就需要对于这个共享的数据结构加锁</p>
-<p>但这条规则又很矛盾：这条规则某种程度上来说又太过严格了。如果有两个进程共享一个数据结构，并且其中一个进程会更新这个数据结构，在某些场合不加锁也可以正常工作；而有时候这个规则又太过宽松了。除了共享的数据，在一些其他场合也需要锁，例如对于 printf，如果我们将一个字符串传递给它，xv6 会尝试原子性的将整个字符串输出，而不是与其他进程的 printf 交织输出。尽管这里没有共享的数据结构，但在这里锁仍然很有用处，因为我们想要printf的输出也是序列化的</p>
-<p>好吧，这条规则并不完美，但是它已经是一个足够好的指导准则</p>
-<h3 id="自动加锁">自动加锁</h3>
-<p>如果按照刚刚的简单规则，一旦我们有了一个共享的数据结构，任何操作这个共享数据结构都需要获取锁，那么对其进行操作时自动地获取锁即可</p>
-<p>但是这样并不行，假如说我要把 ~/dir1/x 文件 mv 到 ~/dir2/y，那么按照这条规则，先对 x 加锁，删除 x，然后释放锁；再对 y 加锁，创建 y，接着释放锁。</p>
-<p>文件系统具有一致性要求，即文件在任何时候看起来都是存在的。但是，在 x 删除完成，而 y 未创建之际，在其他进程的视角下，文件消失了</p>
-<p>换言之，我们希望 mv 的操作是原子的，正确的解决方法是，我们在重命名的一开始就对d1和d2加锁，之后删除x再添加y，最后再释放对于d1和d2的锁。</p>
-<p>在这个例子中，我们的操作需要涉及到多个锁，但是直接为每个对象自动分配一个锁会带来错误的结果。在这个例子中，锁应该与操作而不是数据关联，所以自动加锁在某些场景下会出问题</p>
-<blockquote>
-<p>学生提问：可不可以在访问某个数据结构的时候，就获取所有相关联的数据结构的锁？</p>
-<p>Frans教授：这是一种实现方式。但是这种方式最后会很快演进成big kernel lock，这样你就失去了并发执行的能力，但是你肯定想做得更好。这里就是使用锁的矛盾点了，如果你想要程序简单点，可以通过coarse-grain locking（注，也就是大锁），但是这时你就失去了性能。</p>
-</blockquote>
-<h2 id="死锁">死锁</h2>
-<p>一个死锁的最简单的场景就是：首先 acquire 一个锁，然后进入到 critical section；在 critical section 中，再 acquire 同一个锁；第二个 acquire 必须要等到第一个 acquire 状态被 release 了才能继续执行，但是不继续执行的话又走不到第一个 release，所以程序就一直卡在这了。这就是一个死锁</p>
-<p>当有多个锁的时候，场景会更加有趣。假设现在我们有两个 CPU，一个是 CPU1，另一个是 CPU2。CPU1 执行 rename 将文件 d1/x 移到 d2/y，CPU2 执行 rename 将文件 d2/a 移到 d1/b。这里 CPU1 将文件从 d1 移到 d2，CPU2 正好相反将文件从 d2 移到 d1。我们假设我们按照参数的顺序来 acquire 锁，那么 CPU1 会先获取 d1 的锁，如果程序是真正的并行运行，CPU2 同时也会获取 d2 的锁。之后 CPU1 需要获取 d2 的锁，这里不能成功，因为 CPU2 现在持有锁，所以 CPU1 会停在这个位置等待 d2 的锁释放。而另一个 CPU2，接下来会获取 d1 的锁，它也不能成功，因为 CPU1 现在持有锁。这也是死锁的一个例子，有时候这种场景也被称为 deadly embrace。这里的死锁就没那么容易探测了</p>
-<p>这里的解决方案是，如果你有多个锁，你需要对锁进行排序，所有的操作都必须以相同的顺序获取锁</p>
-<p>所以对于一个系统设计者，你需要确定对于所有的锁对象的全局的顺序。例如在这里的例子中我们让 d1 一直在 d2 之前，这样我们在 rename 的时候，总是先获取排序靠前的目录的锁，再获取排序靠后的目录的锁。如果对于所有的锁有了一个全局的排序，这里的死锁就不会出现了</p>
-<p>但是这样的话，如果一个模块 m1 中方法 g 调用了另一个模块 m2 中的方法 f，那么 m1 中的方法 g 需要知道 m2 的方法 f 使用了哪些锁。因为如果 m2 使用了一些锁，那么 m1 的方法 g 必须集合 f 和 g 中的锁，并形成一个全局的锁的排序</p>
-<p>这样违背了代码抽象的原则。m1 理应完全不知道 m2 的实现。但是具体实现中，m2 内部的锁需要泄露给 m1，这样 m1 才能完成全局锁排序。所以在设计一些更大的系统时，锁使得代码的模块化更加的复杂了</p>
-<h2 id="锁与性能">锁与性能</h2>
-<p>如果只有一个 big kernel lock，那么操作系统只能被一个 CPU 运行，然而大概从 2000 年开始，CPU 的单线程性能达到了一个极限并且也没有再增加过。如果要利用好多核性能，我们需要拆分锁</p>
-<p>如果你重新设计了加锁的规则，你需要确保不破坏内核一直尝试维护的数据不变性，你可能需要重写代码，重构部分内核或者程序。所以这里就有矛盾点了。我们想要获得更好的性能，那么我们需要有更多的锁，但是这又引入了大量的工作</p>
-<h2 id="自旋锁spin-lock的实现">自旋锁（Spin lock）的实现</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">// Mutual exclusion lock.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">struct</span> spinlock {
-</span></span><span style="display:flex;"><span>  uint locked;       <span style="color:#75715e">// Is the lock held?
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    
-</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// For debugging:
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>name;        <span style="color:#75715e">// Name of lock.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">struct</span> cpu <span style="color:#f92672">*</span>cpu;   <span style="color:#75715e">// The cpu holding the lock.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>};
-</span></span></code></pre></div><h3 id="amoswap">amoswap</h3>
-<p>锁的特性就是只有一个进程可以获取锁，在任何时间点都不能有超过一个锁的持有者。</p>
-<p>实现锁的主要难点在于锁的 acquire 接口，在 acquire 里面有一个死循环，循环中判断锁对象的 locked 字段是否为 0，如果为 0 那表明当前锁没有持有者，对于当前的 acquire 的调用可以获取锁。之后我们通过设置锁对象的 locked 字段为1来获取锁。最后返回</p>
-<p>但是完全有可能出现这种情况：两个进程同时卡在 acquire，同时看到锁的 locked 字段为 0，接着同时设置 locked = 1，然后同时获得了锁</p>
-<p>最常见的解决方案是利用特殊的硬件指令，在 RISC-V 上这个指令是 amoswap（amo 是 Atomic Memory Operations 的缩写）</p>
-<pre><code>amoswapamoswap r1, r2, (address)
-</code></pre>
-<p>这条指令会先锁定住 address，将 address 中的数据保存在一个临时变量中（tmp），之后将 r1 中的数据写入到地址中，之后再将保存在临时变量中的数据写入到 r2 中，最后再对于地址解锁。即最后 r1 维持不变，r2 保存了 address 处原来的值，地址 address 处的值变更为 r1</p>
-<p>这里不能使用 sd 写 address。在硬件层面上，sd 会被分成几个子操作，在执行 sd 指令的过程中，处理器可能会被中断，导致指令执行被暂时挂起；在多处理器系统中，sd 指令执行后，新写入的值可能不会立即对所有处理器可见</p>
-<p>xv6 中 acquire 源代码如下：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#66d9ef">void</span>
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">acquire</span>(<span style="color:#66d9ef">struct</span> spinlock <span style="color:#f92672">*</span>lk)
-</span></span><span style="display:flex;"><span>{
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">push_off</span>(); <span style="color:#75715e">// disable interrupts to avoid deadlock.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">if</span>(<span style="color:#a6e22e">holding</span>(lk))
-</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">panic</span>(<span style="color:#e6db74">&#34;acquire&#34;</span>);
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// On RISC-V, sync_lock_test_and_set turns into an atomic swap:
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">//   a5 = 1
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">//   s1 = &amp;lk-&gt;locked
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">//   amoswap.w.aq a5, a5, (s1)
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">while</span>(<span style="color:#a6e22e">__sync_lock_test_and_set</span>(<span style="color:#f92672">&amp;</span>lk<span style="color:#f92672">-&gt;</span>locked, <span style="color:#ae81ff">1</span>) <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
-</span></span><span style="display:flex;"><span>        ;
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Tell the C compiler and the processor to not move loads or stores
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// past this point, to ensure that the critical section&#39;s memory
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// references happen strictly after the lock is acquired.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// On RISC-V, this emits a fence instruction.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">__sync_synchronize</span>();
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>      <span style="color:#75715e">// Record info about lock acquisition for holding() and debugging.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    lk<span style="color:#f92672">-&gt;</span>cpu <span style="color:#f92672">=</span> <span style="color:#a6e22e">mycpu</span>();
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><p>可以看到循环判断 locked 的部分的汇编代码</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#66d9ef">while</span>(<span style="color:#a6e22e">__sync_lock_test_and_set</span>(<span style="color:#f92672">&amp;</span>lk<span style="color:#f92672">-&gt;</span>locked, <span style="color:#ae81ff">1</span>) <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
-</span></span><span style="display:flex;"><span>        <span style="color:#ae81ff">800062</span>ba:	<span style="color:#ae81ff">87</span>ba                	mv	a5,a4
-</span></span><span style="display:flex;"><span>        <span style="color:#ae81ff">800062</span>bc:	<span style="color:#ae81ff">0</span>cf4a7af          	amoswap.w.aq	a5,a5,(s1)
-</span></span><span style="display:flex;"><span>        <span style="color:#ae81ff">800062</span>c0:	<span style="color:#ae81ff">2781</span>                	sext.w	a5,a5
-</span></span><span style="display:flex;"><span>        <span style="color:#ae81ff">800062</span>c2:	ffe5                	bnez	a5,<span style="color:#ae81ff">800062</span>ba <span style="color:#f92672">&lt;</span>acquire<span style="color:#f92672">+</span><span style="color:#ae81ff">0x22</span><span style="color:#f92672">&gt;</span>
-</span></span></code></pre></div><h3 id="关闭中断">关闭中断</h3>
-<p>这里还又一处细节：在 acquire 最开始通过 push_off 关闭了中断</p>
-<p>以 UART 为例，这个设备使用 uart_tx_lock 一把大锁。假设当 top 驱动向 uart 写入字符时，最终会调用 uartputc。uartputc 函数会 acquire 锁，当 UART 完成了字符传输之后会产生一个中断，之后会运行 uartintr 函数，这个函数也会获取同一把锁，但是这把锁正在被 uartputc 持有。如果只有一个 CPU 的话，那就形成了死锁</p>
-<p>我们需要在 acquire 中关闭中断。中断会在 release 的结束位置再次打开，因为在这个位置才能再次安全的接收中断</p>
-<h3 id="synchronize">synchronize</h3>
-<p>第三个细节就是 memory ordering。编译器或者处理器可能会重排指令以获得更好的性能，但是对于并发执行，这将会是一个灾难。如果我们将 critical section 与加锁解锁放在不同的CPU执行，将会得到完全错误的结果。所以指令重新排序在并发场景是错误的。为了禁止，或者说为了告诉编译器和硬件不要这样做，我们需要使用 memory fence 或者叫做 synchronize 指令，来确定指令的移动范围。对于 synchronize 指令，任何在它之前的 load/store 指令，都不能移动到它之后。锁的 acquire 和 release 函数都包含了synchronize指令。</p>
-<h2 id="结束语">结束语</h2>
-<p>首先，锁确保了正确性，但是同时又会降低性能，这是个令人失望的现实，我们是因为并发运行代码才需要使用锁，而锁另一方面又限制了代码的并发运行</p>
-<p>其次锁会增加编写程序的复杂性，在我们的一些实验中会看到锁，我们需要思考锁为什么在这，它需要保护什么。如果你在程序中使用了并发，那么一般都需要使用锁。如果你想避免锁带来的复杂性，可以遵循以下原则：不到万不得已不要共享数据。如果你不在多个进程之间共享数据，那么 race condition 就不可能发生，那么你也就不需要使用锁，程序也不会因此变得复杂。但是通常来说如果你有一些共享的数据结构，那么你就需要锁，你可以从 coarse-grained lock（直译是粗粒度锁，理解为大锁）开始，然后基于测试结果，向 fine-grained lock 演进</p>
-<p>最后，使用 race detector 来找到 race condition，如果你将锁的 acquire 和 release 放置于错误的位置，那么就算使用了锁还是会有 race</p>
-
-      </div>
-    </article>
-
-    <hr />
-
-    <div class="post-info">
-      
-    <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg>
-
-        <span class="tag"><a href="https://whaleblog.github.io/tags/mit-6.s081/">mit-6.s081</a></span>
-        <span class="tag"><a href="https://whaleblog.github.io/tags/xv6/">xv6</a></span>
-        <span class="tag"><a href="https://whaleblog.github.io/tags/os/">OS</a></span>
-        
-    </p>
-
-      
-    <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-folder meta-icon"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-
-        <span class="tag"><a href="https://whaleblog.github.io/categories/notes/">notes</a></span>
-        <span class="tag"><a href="https://whaleblog.github.io/categories/courses/">courses</a></span>
-        
-    </p>
-
-
-      <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-          <polyline points="10 9 9 9 8 9"></polyline>
-        </svg>
-        507字
-      </p>
-
-      <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="16" y1="2" x2="16" y2="6"></line>
-          <line x1="8" y1="2" x2="8" y2="6"></line>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-        </svg>
-        
-          2024-08-20 04:07
-        
-
-         
-          
-        
-      </p>
-    </div>
-      <hr />
-      <div class="sharing-buttons">
-        
-
-  
-    
-    
-  
-
-
-
-
-  
-      
-        
-    
-  
-
-
-
-
-  
-    
-      
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-			
-    
-  
-
-
-
-
-  
-      
-    
-  
-
-
-<style>
-.social-icons {
-  display: flex;
-  align-items: center;
-  gap: 20px;  
-  margin-top: 15px;
-}
-.social-icons a svg {
-  width: 20px;  
-  height: 20px;
-}
-</style>
-
-<div class="social-icons">
-  
-  <a href="mailto:166845494@qq.com" target="_self" rel="noopener" aria-label="Email me" title="Email me">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-      <polyline points="22,6 12,13 2,6"></polyline>
-    </svg>
-  </a>
-
-  
-  <a href="https://github.com/WhaleFall-UESTC" target="_blank" rel="noopener" aria-label="Follow on GitHub" title="Follow on GitHub">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke-width="2">
-      <path d="M12 0C5.373 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.298 24 12c0-6.627-5.373-12-12-12z"/>
-    </svg>
-  </a>
-</div>
-
-      </div>
-
-    
-    <div class="pagination">
-        
-        <div class="pagination__title">
-            <span class="pagination__title-h">浏览其他文章</span>
-            <hr />
-        </div>
-        
-
-        <div class="pagination__buttons">
-            
-            <span class="button previous">
-                <a href="https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;thread/">
-                    <span class="button__icon">←</span>
-                    <span class="button__text">xv6 实验日志 - Thread</span>
-                </a>
-            </span>
-            
-
-            
-            <span class="button next">
-                <a href="https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;interrupts/">
-                    <span class="button__text">xv6 实验日志 - Interrupts</span>
-                    <span class="button__icon">→</span>
-                </a>
-            </span>
-            
-        </div>
-    </div>
-
-
-    
-
-    
-
-    
-
-  </main>
-
-            </div>
-
-            
-                <footer class="footer">
-    
-    
-</footer>
-
-            
-        </div>
-
-        
-
-
-
-<script type="text/javascript" src="/bundle.min.ac2a4bcaed631ec2dc154407be7f09fc28da37de71fae6dee6711b2a3d1622770f87d3cda22c460e9a68ff619bdb1dd75cb7a5d33f159a54e419736cc4541087.js" integrity="sha512-rCpLyu1jHsLcFUQHvn8J/CjaN95x&#43;ube5nEbKj0WIncPh9PNoixGDppo/2Gb2x3XXLel0z8VmlTkGXNsxFQQhw=="></script>
-
-
-
-
-    </body>
-</html>
+但是这样并不行，假如说我要把 ~/dir1/x 文件 mv 到 ~/dir2/y，那么按照这条规则，先对 x 加锁，删除 x，然后释放锁；再对 y 加锁，创建 y，接着释放锁。"><meta property="og:type" content="article"><meta property="og:url" content="https://whaleblog.github.io/posts/xv6+%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97+-+lock/"><meta property="og:image" content="https://whaleblog.github.io/"><meta property="article:section" content="posts"><meta property="article:published_time" content="2024-08-19T20:07:43+00:00"><meta property="article:modified_time" content="2024-08-19T20:07:43+00:00"><meta property="article:section" content="notes"><meta property="article:section" content="courses"><meta property="article:published_time" content="2024-08-19 20:07:43 +0000 UTC"></head><body><div class=container><header class=header><span class=header__inner><a href=/ style=text-decoration:none><div class=logo><span class=logo__mark>></span>
+<span class=logo__text>WhaleFall</span>
+<span class=logo__cursor></span></div></a><span class=header__right><nav class=menu><ul class=menu__inner><li><a href=/about>About</a></li><li><a href=/posts>Blog</a></li><li><a href=/tags>Tags</a></li></ul></nav><span class=menu-trigger><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></span></span></span></header><div class=content><main class=post><div class=post-info><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+3分钟阅读</p></div><article><h1 class=post-title><a href=https://whaleblog.github.io/posts/xv6+%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97+-+lock/>xv6 实验日志 - Lock</a></h1><div class=post-content><p>刚开始接触这个概念的时候觉得锁更像是通行证一类的东西。问了下 AI，它这么和我解释：</p><p>锁（Lock）通常用于确保同一时间只有一个进程或线程能够访问某个资源。当进程或线程想要访问资源时，它必须先获得锁，完成操作后释放锁。这有点像是进入一个房间，你必须拿到钥匙（锁）才能进入，用完后再把钥匙还回去，这样其他人才能使用</p><p>锁就是一个对象，就像其他在内核中的对象一样。有一个结构体叫做 lock，它包含了一些字段，这些字段中维护了锁的状态。锁有非常直观的 API：</p><ul><li><p>acquire，接收指向 lock 的指针作为参数。acquire 确保了在任何时间，只会有一个进程能够成功的获取锁</p></li><li><p>release，也接收指向 lock 的指针作为参数。在同一时间尝试获取锁的其他进程需要等待，直到持有锁的进程对锁调用 release</p></li></ul><p>锁的 acquire 和 release 之间的代码，通常被称为 critical section</p><p>之所以被称为 critical section，是因为通常会在这里以原子的方式执行共享数据的更新。所以基本上来说，如果在 acquire 和 release 之间有多条指令，它们要么会一起执行，要么一条也不会执行。所以永远也不可能看到位于 critical section 中的代码，如同在 race condition 中一样在多个 CPU 上交织的执行，所以这样就能避免 race condition</p><p>锁序列化了代码的执行。如果两个处理器想要进入到同一个 critical section 中，只会有一个能成功进入，另一个处理器会在第一个处理器从 critical section 中退出之后再进入。所以这里完全没有并行执行</p><p>锁的使用完全是由程序员决定的。如果你想要一段代码具备原子性，那么其实是由程序员决定是否增加锁的 acquire 和 release。其次，代码不会自动加锁，程序员自己要确定好是否将锁与数据结构关联，并在适当的位置增加锁的 acquire 和 release</p><h2 id=什么时候用锁>什么时候用锁</h2><h3 id=一个简单的规则>一个简单的规则</h3><p>一个非常保守同时也是非常简单的规则：如果两个进程访问了一个共享的数据结构，并且其中一个进程会更新共享的数据结构，那么就需要对于这个共享的数据结构加锁</p><p>但这条规则又很矛盾：这条规则某种程度上来说又太过严格了。如果有两个进程共享一个数据结构，并且其中一个进程会更新这个数据结构，在某些场合不加锁也可以正常工作；而有时候这个规则又太过宽松了。除了共享的数据，在一些其他场合也需要锁，例如对于 printf，如果我们将一个字符串传递给它，xv6 会尝试原子性的将整个字符串输出，而不是与其他进程的 printf 交织输出。尽管这里没有共享的数据结构，但在这里锁仍然很有用处，因为我们想要printf的输出也是序列化的</p><p>好吧，这条规则并不完美，但是它已经是一个足够好的指导准则</p><h3 id=自动加锁>自动加锁</h3><p>如果按照刚刚的简单规则，一旦我们有了一个共享的数据结构，任何操作这个共享数据结构都需要获取锁，那么对其进行操作时自动地获取锁即可</p><p>但是这样并不行，假如说我要把 ~/dir1/x 文件 mv 到 ~/dir2/y，那么按照这条规则，先对 x 加锁，删除 x，然后释放锁；再对 y 加锁，创建 y，接着释放锁。</p><p>文件系统具有一致性要求，即文件在任何时候看起来都是存在的。但是，在 x 删除完成，而 y 未创建之际，在其他进程的视角下，文件消失了</p><p>换言之，我们希望 mv 的操作是原子的，正确的解决方法是，我们在重命名的一开始就对d1和d2加锁，之后删除x再添加y，最后再释放对于d1和d2的锁。</p><p>在这个例子中，我们的操作需要涉及到多个锁，但是直接为每个对象自动分配一个锁会带来错误的结果。在这个例子中，锁应该与操作而不是数据关联，所以自动加锁在某些场景下会出问题</p><blockquote><p>学生提问：可不可以在访问某个数据结构的时候，就获取所有相关联的数据结构的锁？</p><p>Frans教授：这是一种实现方式。但是这种方式最后会很快演进成big kernel lock，这样你就失去了并发执行的能力，但是你肯定想做得更好。这里就是使用锁的矛盾点了，如果你想要程序简单点，可以通过coarse-grain locking（注，也就是大锁），但是这时你就失去了性能。</p></blockquote><h2 id=死锁>死锁</h2><p>一个死锁的最简单的场景就是：首先 acquire 一个锁，然后进入到 critical section；在 critical section 中，再 acquire 同一个锁；第二个 acquire 必须要等到第一个 acquire 状态被 release 了才能继续执行，但是不继续执行的话又走不到第一个 release，所以程序就一直卡在这了。这就是一个死锁</p><p>当有多个锁的时候，场景会更加有趣。假设现在我们有两个 CPU，一个是 CPU1，另一个是 CPU2。CPU1 执行 rename 将文件 d1/x 移到 d2/y，CPU2 执行 rename 将文件 d2/a 移到 d1/b。这里 CPU1 将文件从 d1 移到 d2，CPU2 正好相反将文件从 d2 移到 d1。我们假设我们按照参数的顺序来 acquire 锁，那么 CPU1 会先获取 d1 的锁，如果程序是真正的并行运行，CPU2 同时也会获取 d2 的锁。之后 CPU1 需要获取 d2 的锁，这里不能成功，因为 CPU2 现在持有锁，所以 CPU1 会停在这个位置等待 d2 的锁释放。而另一个 CPU2，接下来会获取 d1 的锁，它也不能成功，因为 CPU1 现在持有锁。这也是死锁的一个例子，有时候这种场景也被称为 deadly embrace。这里的死锁就没那么容易探测了</p><p>这里的解决方案是，如果你有多个锁，你需要对锁进行排序，所有的操作都必须以相同的顺序获取锁</p><p>所以对于一个系统设计者，你需要确定对于所有的锁对象的全局的顺序。例如在这里的例子中我们让 d1 一直在 d2 之前，这样我们在 rename 的时候，总是先获取排序靠前的目录的锁，再获取排序靠后的目录的锁。如果对于所有的锁有了一个全局的排序，这里的死锁就不会出现了</p><p>但是这样的话，如果一个模块 m1 中方法 g 调用了另一个模块 m2 中的方法 f，那么 m1 中的方法 g 需要知道 m2 的方法 f 使用了哪些锁。因为如果 m2 使用了一些锁，那么 m1 的方法 g 必须集合 f 和 g 中的锁，并形成一个全局的锁的排序</p><p>这样违背了代码抽象的原则。m1 理应完全不知道 m2 的实现。但是具体实现中，m2 内部的锁需要泄露给 m1，这样 m1 才能完成全局锁排序。所以在设计一些更大的系统时，锁使得代码的模块化更加的复杂了</p><h2 id=锁与性能>锁与性能</h2><p>如果只有一个 big kernel lock，那么操作系统只能被一个 CPU 运行，然而大概从 2000 年开始，CPU 的单线程性能达到了一个极限并且也没有再增加过。如果要利用好多核性能，我们需要拆分锁</p><p>如果你重新设计了加锁的规则，你需要确保不破坏内核一直尝试维护的数据不变性，你可能需要重写代码，重构部分内核或者程序。所以这里就有矛盾点了。我们想要获得更好的性能，那么我们需要有更多的锁，但是这又引入了大量的工作</p><h2 id=自旋锁spin-lock的实现>自旋锁（Spin lock）的实现</h2><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=display:flex><span><span style=color:#75715e>// Mutual exclusion lock.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>struct</span> spinlock {
+</span></span><span style=display:flex><span>  uint locked;       <span style=color:#75715e>// Is the lock held?
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// For debugging:
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>char</span> <span style=color:#f92672>*</span>name;        <span style=color:#75715e>// Name of lock.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>struct</span> cpu <span style=color:#f92672>*</span>cpu;   <span style=color:#75715e>// The cpu holding the lock.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>};
+</span></span></code></pre></div><h3 id=amoswap>amoswap</h3><p>锁的特性就是只有一个进程可以获取锁，在任何时间点都不能有超过一个锁的持有者。</p><p>实现锁的主要难点在于锁的 acquire 接口，在 acquire 里面有一个死循环，循环中判断锁对象的 locked 字段是否为 0，如果为 0 那表明当前锁没有持有者，对于当前的 acquire 的调用可以获取锁。之后我们通过设置锁对象的 locked 字段为1来获取锁。最后返回</p><p>但是完全有可能出现这种情况：两个进程同时卡在 acquire，同时看到锁的 locked 字段为 0，接着同时设置 locked = 1，然后同时获得了锁</p><p>最常见的解决方案是利用特殊的硬件指令，在 RISC-V 上这个指令是 amoswap（amo 是 Atomic Memory Operations 的缩写）</p><pre><code>amoswapamoswap r1, r2, (address)
+</code></pre><p>这条指令会先锁定住 address，将 address 中的数据保存在一个临时变量中（tmp），之后将 r1 中的数据写入到地址中，之后再将保存在临时变量中的数据写入到 r2 中，最后再对于地址解锁。即最后 r1 维持不变，r2 保存了 address 处原来的值，地址 address 处的值变更为 r1</p><p>这里不能使用 sd 写 address。在硬件层面上，sd 会被分成几个子操作，在执行 sd 指令的过程中，处理器可能会被中断，导致指令执行被暂时挂起；在多处理器系统中，sd 指令执行后，新写入的值可能不会立即对所有处理器可见</p><p>xv6 中 acquire 源代码如下：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=display:flex><span><span style=color:#66d9ef>void</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>acquire</span>(<span style=color:#66d9ef>struct</span> spinlock <span style=color:#f92672>*</span>lk)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>push_off</span>(); <span style=color:#75715e>// disable interrupts to avoid deadlock.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span>(<span style=color:#a6e22e>holding</span>(lk))
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>panic</span>(<span style=color:#e6db74>&#34;acquire&#34;</span>);
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// On RISC-V, sync_lock_test_and_set turns into an atomic swap:
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>//   a5 = 1
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>//   s1 = &amp;lk-&gt;locked
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>//   amoswap.w.aq a5, a5, (s1)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>while</span>(<span style=color:#a6e22e>__sync_lock_test_and_set</span>(<span style=color:#f92672>&amp;</span>lk<span style=color:#f92672>-&gt;</span>locked, <span style=color:#ae81ff>1</span>) <span style=color:#f92672>!=</span> <span style=color:#ae81ff>0</span>)
+</span></span><span style=display:flex><span>        ;
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Tell the C compiler and the processor to not move loads or stores
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// past this point, to ensure that the critical section&#39;s memory
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// references happen strictly after the lock is acquired.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// On RISC-V, this emits a fence instruction.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>__sync_synchronize</span>();
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// Record info about lock acquisition for holding() and debugging.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    lk<span style=color:#f92672>-&gt;</span>cpu <span style=color:#f92672>=</span> <span style=color:#a6e22e>mycpu</span>();
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>可以看到循环判断 locked 的部分的汇编代码</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=display:flex><span><span style=color:#66d9ef>while</span>(<span style=color:#a6e22e>__sync_lock_test_and_set</span>(<span style=color:#f92672>&amp;</span>lk<span style=color:#f92672>-&gt;</span>locked, <span style=color:#ae81ff>1</span>) <span style=color:#f92672>!=</span> <span style=color:#ae81ff>0</span>)
+</span></span><span style=display:flex><span>        <span style=color:#ae81ff>800062</span>ba:	<span style=color:#ae81ff>87</span>ba                	mv	a5,a4
+</span></span><span style=display:flex><span>        <span style=color:#ae81ff>800062</span>bc:	<span style=color:#ae81ff>0</span>cf4a7af          	amoswap.w.aq	a5,a5,(s1)
+</span></span><span style=display:flex><span>        <span style=color:#ae81ff>800062</span>c0:	<span style=color:#ae81ff>2781</span>                	sext.w	a5,a5
+</span></span><span style=display:flex><span>        <span style=color:#ae81ff>800062</span>c2:	ffe5                	bnez	a5,<span style=color:#ae81ff>800062</span>ba <span style=color:#f92672>&lt;</span>acquire<span style=color:#f92672>+</span><span style=color:#ae81ff>0x22</span><span style=color:#f92672>&gt;</span>
+</span></span></code></pre></div><h3 id=关闭中断>关闭中断</h3><p>这里还又一处细节：在 acquire 最开始通过 push_off 关闭了中断</p><p>以 UART 为例，这个设备使用 uart_tx_lock 一把大锁。假设当 top 驱动向 uart 写入字符时，最终会调用 uartputc。uartputc 函数会 acquire 锁，当 UART 完成了字符传输之后会产生一个中断，之后会运行 uartintr 函数，这个函数也会获取同一把锁，但是这把锁正在被 uartputc 持有。如果只有一个 CPU 的话，那就形成了死锁</p><p>我们需要在 acquire 中关闭中断。中断会在 release 的结束位置再次打开，因为在这个位置才能再次安全的接收中断</p><h3 id=synchronize>synchronize</h3><p>第三个细节就是 memory ordering。编译器或者处理器可能会重排指令以获得更好的性能，但是对于并发执行，这将会是一个灾难。如果我们将 critical section 与加锁解锁放在不同的CPU执行，将会得到完全错误的结果。所以指令重新排序在并发场景是错误的。为了禁止，或者说为了告诉编译器和硬件不要这样做，我们需要使用 memory fence 或者叫做 synchronize 指令，来确定指令的移动范围。对于 synchronize 指令，任何在它之前的 load/store 指令，都不能移动到它之后。锁的 acquire 和 release 函数都包含了synchronize指令。</p><h2 id=结束语>结束语</h2><p>首先，锁确保了正确性，但是同时又会降低性能，这是个令人失望的现实，我们是因为并发运行代码才需要使用锁，而锁另一方面又限制了代码的并发运行</p><p>其次锁会增加编写程序的复杂性，在我们的一些实验中会看到锁，我们需要思考锁为什么在这，它需要保护什么。如果你在程序中使用了并发，那么一般都需要使用锁。如果你想避免锁带来的复杂性，可以遵循以下原则：不到万不得已不要共享数据。如果你不在多个进程之间共享数据，那么 race condition 就不可能发生，那么你也就不需要使用锁，程序也不会因此变得复杂。但是通常来说如果你有一些共享的数据结构，那么你就需要锁，你可以从 coarse-grained lock（直译是粗粒度锁，理解为大锁）开始，然后基于测试结果，向 fine-grained lock 演进</p><p>最后，使用 race detector 来找到 race condition，如果你将锁的 acquire 和 release 放置于错误的位置，那么就算使用了锁还是会有 race</p></div></article><hr><div class=post-info><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83.0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7" y2="7"/></svg>
+<span class=tag><a href=https://whaleblog.github.io/tags/mit-6.s081/>mit-6.s081</a></span>
+<span class=tag><a href=https://whaleblog.github.io/tags/xv6/>xv6</a></span>
+<span class=tag><a href=https://whaleblog.github.io/tags/os/>OS</a></span></p><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-folder meta-icon"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+<span class=tag><a href=https://whaleblog.github.io/categories/notes/>notes</a></span>
+<span class=tag><a href=https://whaleblog.github.io/categories/courses/>courses</a></span></p><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6A2 2 0 004 4v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+507字</p><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+2024-08-20 04:07</p></div><hr><div class=sharing-buttons><style>.social-icons{display:flex;align-items:center;gap:20px;margin-top:15px}.social-icons a svg{width:20px;height:20px}</style><div class=social-icons><a href=mailto:166845494@qq.com target=_self rel=noopener aria-label="Email me" title="Email me"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1.0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1.0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+</a><a href=https://github.com/WhaleFall-UESTC target=_blank rel=noopener aria-label="Follow on GitHub" title="Follow on GitHub"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentcolor" stroke-width="2"><path d="M12 0C5.373.0.0 5.373.0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931.0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176.0.0 1.008-.322 3.301 1.23A11.509 11.509.0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221.0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.298 24 12c0-6.627-5.373-12-12-12z"/></svg></a></div></div><div class=pagination><div class=pagination__title><span class=pagination__title-h>浏览其他文章</span><hr></div><div class=pagination__buttons><span class="button previous"><a href=https://whaleblog.github.io/posts/xv6+%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97+-+thread/><span class=button__icon>←</span>
+<span class=button__text>xv6 实验日志 - Thread</span>
+</a></span><span class="button next"><a href=https://whaleblog.github.io/posts/xv6+%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97+-+interrupts/><span class=button__text>xv6 实验日志 - Interrupts</span>
+<span class=button__icon>→</span></a></span></div></div></main></div><footer class=footer></footer></div><script type=text/javascript src=/bundle.min.ac2a4bcaed631ec2dc154407be7f09fc28da37de71fae6dee6711b2a3d1622770f87d3cda22c460e9a68ff619bdb1dd75cb7a5d33f159a54e419736cc4541087.js integrity="sha512-rCpLyu1jHsLcFUQHvn8J/CjaN95x+ube5nEbKj0WIncPh9PNoixGDppo/2Gb2x3XXLel0z8VmlTkGXNsxFQQhw=="></script></body></html>

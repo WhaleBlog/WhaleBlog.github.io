@@ -1,12 +1,4 @@
-<!DOCTYPE html>
-<html lang="zh">
-    <head>
-        <meta charset="UTF-8">
-<meta http-equiv="X-UA-Compatible" content="ie=edge">
-
-<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<meta name="author" content="">
-<meta name="description" content="1. Interface 对于 Disjoint Sets，我们定义如下接口：
+<!doctype html><html lang=zh><head><meta charset=UTF-8><meta http-equiv=X-UA-Compatible content="ie=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=author content><meta name=description content="1. Interface 对于 Disjoint Sets，我们定义如下接口：
 public interface DisjointSets { /** connects two items P and Q */ void connect(int p, int q); /** checks to see if two items are connected */ boolean isConnected(int p, int q); } connect 方法会将两个整数归为同一个集合，isConnected 则用来判断两个整数是否为同一集合
 例如，我们有四个元素 A，B，C，D
 在调用connect(A, B) 后：
@@ -17,487 +9,83 @@ isConnected(A, C) -&amp;gt; false
 isConnected(A, D) -&amp;gt; true
 isConnected(A, C) -&amp;gt; false
 2. Implements 完整的实现请参照 WeightedQuickUnionUF
-2.1 isConnected 我们使用parent数组来表示这样的不相交集。准确来说，使用数组来表示几颗棵树，处在同一棵树的元素，即拥有相同根节点的元素，属于同一个集合" />
-<meta name="keywords" content=", cs61b, data structure" />
-<meta name="robots" content="noodp" />
-<meta name="theme-color" content="" />
-<link rel="canonical" href="https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;disjoint&#43;sets/" />
-
-
-    <title>
-        
-            CS61B 学习笔记 - Disjoint Sets :: WhaleFall&#39;s Blog 
-        
-    </title>
-
-
-
-
-
-  <link rel="stylesheet" href="/main.min.ab5336003ba331300318b49292c672210905baf1ef5410a739f647e70c8808fa.css" integrity="sha256-q1M2ADujMTADGLSSksZyIQkFuvHvVBCnOfZH5wyICPo=" crossorigin="anonymous">
-
-
-
-
-
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="manifest" href="/site.webmanifest">
-    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="">
-    <link rel="shortcut icon" href="/favicon.ico">
-    <meta name="msapplication-TileColor" content="">
-
-
-<meta itemprop="name" content="CS61B 学习笔记 - Disjoint Sets">
-<meta itemprop="description" content="1. Interface 对于 Disjoint Sets，我们定义如下接口：
+2.1 isConnected 我们使用parent数组来表示这样的不相交集。准确来说，使用数组来表示几颗棵树，处在同一棵树的元素，即拥有相同根节点的元素，属于同一个集合"><meta name=keywords content=",cs61b,data structure"><meta name=robots content="noodp"><meta name=theme-color content><link rel=canonical href=https://whaleblog.github.io/posts/cs61b+%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0+-+disjoint+sets/><title>CS61B 学习笔记 - Disjoint Sets :: WhaleFall's Blog
+</title><link rel=stylesheet href=/main.min.ab5336003ba331300318b49292c672210905baf1ef5410a739f647e70c8808fa.css integrity="sha256-q1M2ADujMTADGLSSksZyIQkFuvHvVBCnOfZH5wyICPo=" crossorigin=anonymous><link rel=apple-touch-icon sizes=180x180 href=/apple-touch-icon.png><link rel=icon type=image/png sizes=32x32 href=/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicon-16x16.png><link rel=manifest href=/site.webmanifest><link rel=mask-icon href=/safari-pinned-tab.svg color><link rel="shortcut icon" href=/favicon.ico><meta name=msapplication-TileColor content><meta itemprop=name content="CS61B 学习笔记 - Disjoint Sets"><meta itemprop=description content="1. Interface 对于 Disjoint Sets，我们定义如下接口：
 public interface DisjointSets { /** connects two items P and Q */ void connect(int p, int q); /** checks to see if two items are connected */ boolean isConnected(int p, int q); } connect 方法会将两个整数归为同一个集合，isConnected 则用来判断两个整数是否为同一集合
 例如，我们有四个元素 A，B，C，D
 在调用connect(A, B) 后：
-isConnected(A, B) -&gt; true
-isConnected(A, C) -&gt; false
+isConnected(A, B) -> true
+isConnected(A, C) -> false
 然后调用connect(A, D)：
 于是有：
-isConnected(A, D) -&gt; true
-isConnected(A, C) -&gt; false
+isConnected(A, D) -> true
+isConnected(A, C) -> false
 2. Implements 完整的实现请参照 WeightedQuickUnionUF
-2.1 isConnected 我们使用parent数组来表示这样的不相交集。准确来说，使用数组来表示几颗棵树，处在同一棵树的元素，即拥有相同根节点的元素，属于同一个集合"><meta itemprop="datePublished" content="2024-07-29T08:19:40+00:00" />
-<meta itemprop="dateModified" content="2024-07-29T08:19:40+00:00" />
-<meta itemprop="wordCount" content="232"><meta itemprop="image" content="https://whaleblog.github.io/" />
-<meta itemprop="keywords" content="cs61b,data structure," />
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:image" content="https://whaleblog.github.io/" /><meta name="twitter:title" content="CS61B 学习笔记 - Disjoint Sets"/>
-<meta name="twitter:description" content="1. Interface 对于 Disjoint Sets，我们定义如下接口：
+2.1 isConnected 我们使用parent数组来表示这样的不相交集。准确来说，使用数组来表示几颗棵树，处在同一棵树的元素，即拥有相同根节点的元素，属于同一个集合"><meta itemprop=datePublished content="2024-07-29T08:19:40+00:00"><meta itemprop=dateModified content="2024-07-29T08:19:40+00:00"><meta itemprop=wordCount content="232"><meta itemprop=image content="https://whaleblog.github.io/"><meta itemprop=keywords content="cs61b,data structure,"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://whaleblog.github.io/"><meta name=twitter:title content="CS61B 学习笔记 - Disjoint Sets"><meta name=twitter:description content="1. Interface 对于 Disjoint Sets，我们定义如下接口：
 public interface DisjointSets { /** connects two items P and Q */ void connect(int p, int q); /** checks to see if two items are connected */ boolean isConnected(int p, int q); } connect 方法会将两个整数归为同一个集合，isConnected 则用来判断两个整数是否为同一集合
 例如，我们有四个元素 A，B，C，D
 在调用connect(A, B) 后：
-isConnected(A, B) -&gt; true
-isConnected(A, C) -&gt; false
+isConnected(A, B) -> true
+isConnected(A, C) -> false
 然后调用connect(A, D)：
 于是有：
-isConnected(A, D) -&gt; true
-isConnected(A, C) -&gt; false
+isConnected(A, D) -> true
+isConnected(A, C) -> false
 2. Implements 完整的实现请参照 WeightedQuickUnionUF
-2.1 isConnected 我们使用parent数组来表示这样的不相交集。准确来说，使用数组来表示几颗棵树，处在同一棵树的元素，即拥有相同根节点的元素，属于同一个集合"/>
-
-
-
-    <meta property="og:title" content="CS61B 学习笔记 - Disjoint Sets" />
-<meta property="og:description" content="1. Interface 对于 Disjoint Sets，我们定义如下接口：
+2.1 isConnected 我们使用parent数组来表示这样的不相交集。准确来说，使用数组来表示几颗棵树，处在同一棵树的元素，即拥有相同根节点的元素，属于同一个集合"><meta property="og:title" content="CS61B 学习笔记 - Disjoint Sets"><meta property="og:description" content="1. Interface 对于 Disjoint Sets，我们定义如下接口：
 public interface DisjointSets { /** connects two items P and Q */ void connect(int p, int q); /** checks to see if two items are connected */ boolean isConnected(int p, int q); } connect 方法会将两个整数归为同一个集合，isConnected 则用来判断两个整数是否为同一集合
 例如，我们有四个元素 A，B，C，D
 在调用connect(A, B) 后：
-isConnected(A, B) -&gt; true
-isConnected(A, C) -&gt; false
+isConnected(A, B) -> true
+isConnected(A, C) -> false
 然后调用connect(A, D)：
 于是有：
-isConnected(A, D) -&gt; true
-isConnected(A, C) -&gt; false
+isConnected(A, D) -> true
+isConnected(A, C) -> false
 2. Implements 完整的实现请参照 WeightedQuickUnionUF
-2.1 isConnected 我们使用parent数组来表示这样的不相交集。准确来说，使用数组来表示几颗棵树，处在同一棵树的元素，即拥有相同根节点的元素，属于同一个集合" />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;disjoint&#43;sets/" /><meta property="og:image" content="https://whaleblog.github.io/" /><meta property="article:section" content="posts" />
-<meta property="article:published_time" content="2024-07-29T08:19:40+00:00" />
-<meta property="article:modified_time" content="2024-07-29T08:19:40+00:00" />
-
-
-
-
-
-    <meta property="article:section" content="courses" />
-
-    <meta property="article:section" content="notes" />
-
-
-
-    <meta property="article:published_time" content="2024-07-29 08:19:40 &#43;0000 UTC" />
-
-
-
-
-
-
-
-
-
-
-
-
-    </head>
-
-    
-        <body>
-    
-    
-        <div class="container">
-            <header class="header">
-    <span class="header__inner">
-        <a href="/" style="text-decoration: none;">
-    <div class="logo">
-        
-            <span class="logo__mark">></span>
-            <span class="logo__text ">
-                WhaleFall</span>
-            <span class="logo__cursor" style=
-                  "
-                   
-                   ">
-            </span>
-        
-    </div>
-</a>
-
-
-        <span class="header__right">
-                <nav class="menu">
-    <ul class="menu__inner"><li><a href="/about">About</a></li><li><a href="/posts">Blog</a></li><li><a href="/tags">Tags</a></li>
-    </ul>
-</nav>
-
-                <span class="menu-trigger">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path d="M0 0h24v24H0z" fill="none"/>
-                        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-                    </svg>
-                </span>
-        </span>
-    </span>
-</header>
-
-
-            <div class="content">
-                
-  <main class="post">
-
-    <div class="post-info">
-      <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock">
-          <circle cx="12" cy="12" r="10"></circle>
-          <polyline points="12 6 12 12 16 14"></polyline>
-        </svg>
-        2分钟阅读
-
-        
-      </p>
-    </div>
-
-    <article>
-      <h1 class="post-title">
-        <a href="https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;disjoint&#43;sets/">CS61B 学习笔记 - Disjoint Sets</a>
-      </h1>
-
-      
-
-      
-
-      
-
-      <div class="post-content">
-        <h2 id="1-interface">1. Interface</h2>
-<p>对于 Disjoint Sets，我们定义如下接口：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">interface</span> <span style="color:#a6e22e">DisjointSets</span> {
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">/** connects two items P and Q */</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">connect</span>(<span style="color:#66d9ef">int</span> p, <span style="color:#66d9ef">int</span> q);
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">/** checks to see if two items are connected */</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">boolean</span> <span style="color:#a6e22e">isConnected</span>(<span style="color:#66d9ef">int</span> p, <span style="color:#66d9ef">int</span> q); 
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><p><code>connect</code> 方法会将两个整数归为同一个集合，<code>isConnected</code> 则用来判断两个整数是否为同一集合</p>
-<p>例如，我们有四个元素 A，B，C，D</p>
-<p><img alt="image (1).avif" src="/upload/image%20(1).avif"></p>
-<p>在调用<code>connect(A, B)</code> 后：</p>
-<p><img alt="image (2).avif" src="/upload/image%20(2).avif"></p>
-<p><code>isConnected(A, B) -&gt; true</code></p>
-<p><code>isConnected(A, C) -&gt; false</code></p>
-<p>然后调用<code>connect(A, D)</code>：</p>
-<p><img alt="image (3).avif" src="/upload/image%20(3).avif"></p>
-<p>于是有：</p>
-<p><code>isConnected(A, D) -&gt; true</code></p>
-<p><code>isConnected(A, C) -&gt; false</code></p>
-<h2 id="2-implements">2. Implements</h2>
-<p>完整的实现请参照 <a href="https://algs4.cs.princeton.edu/15uf/WeightedQuickUnionUF.java.html">WeightedQuickUnionUF</a></p>
-<h3 id="21-isconnected">2.1 isConnected</h3>
-<p>我们使用<code>parent</code>数组来表示这样的不相交集。准确来说，使用数组来表示几颗棵树，处在同一棵树的元素，即拥有相同根节点的元素，属于同一个集合</p>
-<p>顾名思义，<code>parent</code> 数组中，数组下标对应位置存储的是该元素的父节点。例如<code>parent[0] = 3</code> ，则元素 0 的父节点是 3 。若存储为负数，则表示该节点是根节点</p>
-<p>下图是用数组表示的一个例子：</p>
-<p><img alt="9.3.1.png" src="/upload/9.3.1.png"></p>
-<p>归功于这种结构，我们可以很方便地判断两个元素是否同属于一个集合。新建一个公共方法<code>find(int p)</code>，它返回元素<code>p</code> 的根节点</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">int</span> <span style="color:#a6e22e">find</span>(<span style="color:#66d9ef">int</span> p) {
-</span></span><span style="display:flex;"><span>    validate(p);
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (parent<span style="color:#f92672">[</span>p<span style="color:#f92672">]</span> <span style="color:#f92672">&gt;=</span> 0)
-</span></span><span style="display:flex;"><span>        p <span style="color:#f92672">=</span> parent<span style="color:#f92672">[</span>p<span style="color:#f92672">]</span>;
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> p;
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><p>于是<code>find(2) == 0</code> ，<code>find(4) == 0</code> ,故而<code>isConnected(2, 4) == true</code></p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">boolean</span> <span style="color:#a6e22e">isConnected</span>(<span style="color:#66d9ef">int</span> p, <span style="color:#66d9ef">int</span> q) {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> find(p) <span style="color:#f92672">==</span> find(q);
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><h3 id="22-connect">2.2 connect</h3>
-<p>还是这张图：</p>
-<p><img alt="9.3.1.png" src="/upload/9.3.1.png"></p>
-<p>现在，如果我们调用<code>connect(2, 3)</code> ，很自然的想法是，将<code>parent[3]</code> 设置为<code>2</code> ，这样 3 就成为了 2 的子节点，同时，0，1，2，3，4，5 就被放到了同一集合中，符合我们的期望</p>
-<p>但是以效率的角度来说，我们不希望形成的树是细长的，我们希望它是扁平而又茂密的</p>
-<p><img alt="image.avif" src="/upload/image.avif"></p>
-<p>如上图一颗细长树，<code>find()</code>所需时间为 O(N)。当我们调用 <code>find(4)</code>时，我们要想上寻找 4 次才能找到 0</p>
-<p>但是，在最理想情况，我们完全可以让 0 成为其他所有元素的父节点，这样调用<code>find()</code>时只需要寻找一次，时间压缩到了 O(logN)</p>
-<p>所以说，比起将 3 放在 2 底下，更应该放在根节点 0 下</p>
-<p><img alt="9.3.2.png" src="/upload/9.3.2.png"></p>
-<p>而这样的实现并不困难，我们可以先调用<code>find(2)</code>和<code>find(3)</code>，然后再对其根节点进行操作就行了</p>
-<p>但是，为什么是 3 放在 0 下，而不是 0 放在 3 下呢？</p>
-<p>我们希望树的层数尽可能少，前者可以任维持 3 层，而后者会涨至 4 层，所以如此</p>
-<p>为了使层数最少，我们将更小的树放在更大的树之下。为此，我们需要维护一个<code>size</code> 数组，记录以下标为根节点的树所含元素数量。在上图中，<code>size[0] == 6</code>，<code>size[3] == 2</code> ，所以我们将 3 放在 0 下</p>
-<p>于是我们给出<code>connect()</code>的实现：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-Java" data-lang="Java"><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">union</span>(<span style="color:#66d9ef">int</span> p, <span style="color:#66d9ef">int</span> q) {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> rootP <span style="color:#f92672">=</span> find(p);
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> rootQ <span style="color:#f92672">=</span> find(q);
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (rootP <span style="color:#f92672">==</span> rootQ) <span style="color:#66d9ef">return</span>;
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// make smaller root point to larger one</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (size<span style="color:#f92672">[</span>rootP<span style="color:#f92672">]</span> <span style="color:#f92672">&lt;</span> size<span style="color:#f92672">[</span>rootQ<span style="color:#f92672">]</span>) {
-</span></span><span style="display:flex;"><span>        parent<span style="color:#f92672">[</span>rootP<span style="color:#f92672">]</span> <span style="color:#f92672">=</span> rootQ;
-</span></span><span style="display:flex;"><span>        size<span style="color:#f92672">[</span>rootQ<span style="color:#f92672">]</span> <span style="color:#f92672">+=</span> size<span style="color:#f92672">[</span>rootP<span style="color:#f92672">]</span>;
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">else</span> {
-</span></span><span style="display:flex;"><span>        parent<span style="color:#f92672">[</span>rootQ<span style="color:#f92672">]</span> <span style="color:#f92672">=</span> rootP;
-</span></span><span style="display:flex;"><span>        size<span style="color:#f92672">[</span>rootP<span style="color:#f92672">]</span> <span style="color:#f92672">+=</span> size<span style="color:#f92672">[</span>rootQ<span style="color:#f92672">]</span>;
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    count<span style="color:#f92672">--</span>;
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div>
-      </div>
-    </article>
-
-    <hr />
-
-    <div class="post-info">
-      
-    <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg>
-
-        <span class="tag"><a href="https://whaleblog.github.io/tags/cs61b/">cs61b</a></span>
-        <span class="tag"><a href="https://whaleblog.github.io/tags/data-structure/">data structure</a></span>
-        
-    </p>
-
-      
-    <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-folder meta-icon"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-
-        <span class="tag"><a href="https://whaleblog.github.io/categories/courses/">courses</a></span>
-        <span class="tag"><a href="https://whaleblog.github.io/categories/notes/">notes</a></span>
-        
-    </p>
-
-
-      <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-          <polyline points="10 9 9 9 8 9"></polyline>
-        </svg>
-        232字
-      </p>
-
-      <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="16" y1="2" x2="16" y2="6"></line>
-          <line x1="8" y1="2" x2="8" y2="6"></line>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-        </svg>
-        
-          2024-07-29 16:19
-        
-
-         
-          
-        
-      </p>
-    </div>
-      <hr />
-      <div class="sharing-buttons">
-        
-
-  
-    
-    
-  
-
-
-
-
-  
-      
-        
-    
-  
-
-
-
-
-  
-    
-      
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-			
-    
-  
-
-
-
-
-  
-      
-    
-  
-
-
-<style>
-.social-icons {
-  display: flex;
-  align-items: center;
-  gap: 20px;  
-  margin-top: 15px;
-}
-.social-icons a svg {
-  width: 20px;  
-  height: 20px;
-}
-</style>
-
-<div class="social-icons">
-  
-  <a href="mailto:166845494@qq.com" target="_self" rel="noopener" aria-label="Email me" title="Email me">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-      <polyline points="22,6 12,13 2,6"></polyline>
-    </svg>
-  </a>
-
-  
-  <a href="https://github.com/WhaleFall-UESTC" target="_blank" rel="noopener" aria-label="Follow on GitHub" title="Follow on GitHub">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke-width="2">
-      <path d="M12 0C5.373 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.298 24 12c0-6.627-5.373-12-12-12z"/>
-    </svg>
-  </a>
-</div>
-
-      </div>
-
-    
-    <div class="pagination">
-        
-        <div class="pagination__title">
-            <span class="pagination__title-h">浏览其他文章</span>
-            <hr />
-        </div>
-        
-
-        <div class="pagination__buttons">
-            
-            <span class="button previous">
-                <a href="https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;bst&#43;&#43;b-trees/">
-                    <span class="button__icon">←</span>
-                    <span class="button__text">CS61B 学习笔记 - BST &amp; B-Trees</span>
-                </a>
-            </span>
-            
-
-            
-            <span class="button next">
-                <a href="https://whaleblog.github.io/posts/%E5%A6%82%E6%9E%9C%E4%BD%A0%E6%83%B3%E5%9C%A8&#43;matebook&#43;e&#43;2022&#43;%E4%B8%8A%E4%BD%BF%E7%94%A8&#43;linux/">
-                    <span class="button__text">在 Matebook E 2022 上安装 Kubuntu18.04</span>
-                    <span class="button__icon">→</span>
-                </a>
-            </span>
-            
-        </div>
-    </div>
-
-
-    
-
-    
-
-    
-
-  </main>
-
-            </div>
-
-            
-                <footer class="footer">
-    
-    
-</footer>
-
-            
-        </div>
-
-        
-
-
-
-<script type="text/javascript" src="/bundle.min.ac2a4bcaed631ec2dc154407be7f09fc28da37de71fae6dee6711b2a3d1622770f87d3cda22c460e9a68ff619bdb1dd75cb7a5d33f159a54e419736cc4541087.js" integrity="sha512-rCpLyu1jHsLcFUQHvn8J/CjaN95x&#43;ube5nEbKj0WIncPh9PNoixGDppo/2Gb2x3XXLel0z8VmlTkGXNsxFQQhw=="></script>
-
-
-
-
-    </body>
-</html>
+2.1 isConnected 我们使用parent数组来表示这样的不相交集。准确来说，使用数组来表示几颗棵树，处在同一棵树的元素，即拥有相同根节点的元素，属于同一个集合"><meta property="og:type" content="article"><meta property="og:url" content="https://whaleblog.github.io/posts/cs61b+%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0+-+disjoint+sets/"><meta property="og:image" content="https://whaleblog.github.io/"><meta property="article:section" content="posts"><meta property="article:published_time" content="2024-07-29T08:19:40+00:00"><meta property="article:modified_time" content="2024-07-29T08:19:40+00:00"><meta property="article:section" content="courses"><meta property="article:section" content="notes"><meta property="article:published_time" content="2024-07-29 08:19:40 +0000 UTC"></head><body><div class=container><header class=header><span class=header__inner><a href=/ style=text-decoration:none><div class=logo><span class=logo__mark>></span>
+<span class=logo__text>WhaleFall</span>
+<span class=logo__cursor></span></div></a><span class=header__right><nav class=menu><ul class=menu__inner><li><a href=/about>About</a></li><li><a href=/posts>Blog</a></li><li><a href=/tags>Tags</a></li></ul></nav><span class=menu-trigger><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></span></span></span></header><div class=content><main class=post><div class=post-info><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+2分钟阅读</p></div><article><h1 class=post-title><a href=https://whaleblog.github.io/posts/cs61b+%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0+-+disjoint+sets/>CS61B 学习笔记 - Disjoint Sets</a></h1><div class=post-content><h2 id=1-interface>1. Interface</h2><p>对于 Disjoint Sets，我们定义如下接口：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-Java data-lang=Java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>interface</span> <span style=color:#a6e22e>DisjointSets</span> {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>/** connects two items P and Q */</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>connect</span>(<span style=color:#66d9ef>int</span> p, <span style=color:#66d9ef>int</span> q);
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>/** checks to see if two items are connected */</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>boolean</span> <span style=color:#a6e22e>isConnected</span>(<span style=color:#66d9ef>int</span> p, <span style=color:#66d9ef>int</span> q); 
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p><code>connect</code> 方法会将两个整数归为同一个集合，<code>isConnected</code> 则用来判断两个整数是否为同一集合</p><p>例如，我们有四个元素 A，B，C，D</p><p><img alt="image (1).avif" src=/upload/image%20(1).avif></p><p>在调用<code>connect(A, B)</code> 后：</p><p><img alt="image (2).avif" src=/upload/image%20(2).avif></p><p><code>isConnected(A, B) -> true</code></p><p><code>isConnected(A, C) -> false</code></p><p>然后调用<code>connect(A, D)</code>：</p><p><img alt="image (3).avif" src=/upload/image%20(3).avif></p><p>于是有：</p><p><code>isConnected(A, D) -> true</code></p><p><code>isConnected(A, C) -> false</code></p><h2 id=2-implements>2. Implements</h2><p>完整的实现请参照 <a href=https://algs4.cs.princeton.edu/15uf/WeightedQuickUnionUF.java.html>WeightedQuickUnionUF</a></p><h3 id=21-isconnected>2.1 isConnected</h3><p>我们使用<code>parent</code>数组来表示这样的不相交集。准确来说，使用数组来表示几颗棵树，处在同一棵树的元素，即拥有相同根节点的元素，属于同一个集合</p><p>顾名思义，<code>parent</code> 数组中，数组下标对应位置存储的是该元素的父节点。例如<code>parent[0] = 3</code> ，则元素 0 的父节点是 3 。若存储为负数，则表示该节点是根节点</p><p>下图是用数组表示的一个例子：</p><p><img alt=9.3.1.png src=/upload/9.3.1.png></p><p>归功于这种结构，我们可以很方便地判断两个元素是否同属于一个集合。新建一个公共方法<code>find(int p)</code>，它返回元素<code>p</code> 的根节点</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-Java data-lang=Java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>int</span> <span style=color:#a6e22e>find</span>(<span style=color:#66d9ef>int</span> p) {
+</span></span><span style=display:flex><span>    validate(p);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>while</span> (parent<span style=color:#f92672>[</span>p<span style=color:#f92672>]</span> <span style=color:#f92672>&gt;=</span> 0)
+</span></span><span style=display:flex><span>        p <span style=color:#f92672>=</span> parent<span style=color:#f92672>[</span>p<span style=color:#f92672>]</span>;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> p;
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>于是<code>find(2) == 0</code> ，<code>find(4) == 0</code> ,故而<code>isConnected(2, 4) == true</code></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-Java data-lang=Java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>boolean</span> <span style=color:#a6e22e>isConnected</span>(<span style=color:#66d9ef>int</span> p, <span style=color:#66d9ef>int</span> q) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> find(p) <span style=color:#f92672>==</span> find(q);
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=22-connect>2.2 connect</h3><p>还是这张图：</p><p><img alt=9.3.1.png src=/upload/9.3.1.png></p><p>现在，如果我们调用<code>connect(2, 3)</code> ，很自然的想法是，将<code>parent[3]</code> 设置为<code>2</code> ，这样 3 就成为了 2 的子节点，同时，0，1，2，3，4，5 就被放到了同一集合中，符合我们的期望</p><p>但是以效率的角度来说，我们不希望形成的树是细长的，我们希望它是扁平而又茂密的</p><p><img alt=image.avif src=/upload/image.avif></p><p>如上图一颗细长树，<code>find()</code>所需时间为 O(N)。当我们调用 <code>find(4)</code>时，我们要想上寻找 4 次才能找到 0</p><p>但是，在最理想情况，我们完全可以让 0 成为其他所有元素的父节点，这样调用<code>find()</code>时只需要寻找一次，时间压缩到了 O(logN)</p><p>所以说，比起将 3 放在 2 底下，更应该放在根节点 0 下</p><p><img alt=9.3.2.png src=/upload/9.3.2.png></p><p>而这样的实现并不困难，我们可以先调用<code>find(2)</code>和<code>find(3)</code>，然后再对其根节点进行操作就行了</p><p>但是，为什么是 3 放在 0 下，而不是 0 放在 3 下呢？</p><p>我们希望树的层数尽可能少，前者可以任维持 3 层，而后者会涨至 4 层，所以如此</p><p>为了使层数最少，我们将更小的树放在更大的树之下。为此，我们需要维护一个<code>size</code> 数组，记录以下标为根节点的树所含元素数量。在上图中，<code>size[0] == 6</code>，<code>size[3] == 2</code> ，所以我们将 3 放在 0 下</p><p>于是我们给出<code>connect()</code>的实现：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-Java data-lang=Java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>union</span>(<span style=color:#66d9ef>int</span> p, <span style=color:#66d9ef>int</span> q) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>int</span> rootP <span style=color:#f92672>=</span> find(p);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>int</span> rootQ <span style=color:#f92672>=</span> find(q);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (rootP <span style=color:#f92672>==</span> rootQ) <span style=color:#66d9ef>return</span>;
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// make smaller root point to larger one</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (size<span style=color:#f92672>[</span>rootP<span style=color:#f92672>]</span> <span style=color:#f92672>&lt;</span> size<span style=color:#f92672>[</span>rootQ<span style=color:#f92672>]</span>) {
+</span></span><span style=display:flex><span>        parent<span style=color:#f92672>[</span>rootP<span style=color:#f92672>]</span> <span style=color:#f92672>=</span> rootQ;
+</span></span><span style=display:flex><span>        size<span style=color:#f92672>[</span>rootQ<span style=color:#f92672>]</span> <span style=color:#f92672>+=</span> size<span style=color:#f92672>[</span>rootP<span style=color:#f92672>]</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>        parent<span style=color:#f92672>[</span>rootQ<span style=color:#f92672>]</span> <span style=color:#f92672>=</span> rootP;
+</span></span><span style=display:flex><span>        size<span style=color:#f92672>[</span>rootP<span style=color:#f92672>]</span> <span style=color:#f92672>+=</span> size<span style=color:#f92672>[</span>rootQ<span style=color:#f92672>]</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    count<span style=color:#f92672>--</span>;
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div></div></article><hr><div class=post-info><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83.0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7" y2="7"/></svg>
+<span class=tag><a href=https://whaleblog.github.io/tags/cs61b/>cs61b</a></span>
+<span class=tag><a href=https://whaleblog.github.io/tags/data-structure/>data structure</a></span></p><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-folder meta-icon"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+<span class=tag><a href=https://whaleblog.github.io/categories/courses/>courses</a></span>
+<span class=tag><a href=https://whaleblog.github.io/categories/notes/>notes</a></span></p><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6A2 2 0 004 4v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+232字</p><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+2024-07-29 16:19</p></div><hr><div class=sharing-buttons><style>.social-icons{display:flex;align-items:center;gap:20px;margin-top:15px}.social-icons a svg{width:20px;height:20px}</style><div class=social-icons><a href=mailto:166845494@qq.com target=_self rel=noopener aria-label="Email me" title="Email me"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1.0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1.0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+</a><a href=https://github.com/WhaleFall-UESTC target=_blank rel=noopener aria-label="Follow on GitHub" title="Follow on GitHub"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentcolor" stroke-width="2"><path d="M12 0C5.373.0.0 5.373.0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931.0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176.0.0 1.008-.322 3.301 1.23A11.509 11.509.0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221.0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.298 24 12c0-6.627-5.373-12-12-12z"/></svg></a></div></div><div class=pagination><div class=pagination__title><span class=pagination__title-h>浏览其他文章</span><hr></div><div class=pagination__buttons><span class="button previous"><a href=https://whaleblog.github.io/posts/cs61b+%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0+-+bst++b-trees/><span class=button__icon>←</span>
+<span class=button__text>CS61B 学习笔记 - BST & B-Trees</span>
+</a></span><span class="button next"><a href=https://whaleblog.github.io/posts/%E5%A6%82%E6%9E%9C%E4%BD%A0%E6%83%B3%E5%9C%A8+matebook+e+2022+%E4%B8%8A%E4%BD%BF%E7%94%A8+linux/><span class=button__text>在 Matebook E 2022 上安装 Kubuntu18.04</span>
+<span class=button__icon>→</span></a></span></div></div></main></div><footer class=footer></footer></div><script type=text/javascript src=/bundle.min.ac2a4bcaed631ec2dc154407be7f09fc28da37de71fae6dee6711b2a3d1622770f87d3cda22c460e9a68ff619bdb1dd75cb7a5d33f159a54e419736cc4541087.js integrity="sha512-rCpLyu1jHsLcFUQHvn8J/CjaN95x+ube5nEbKj0WIncPh9PNoixGDppo/2Gb2x3XXLel0z8VmlTkGXNsxFQQhw=="></script></body></html>

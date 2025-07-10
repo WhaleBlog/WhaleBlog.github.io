@@ -1,683 +1,249 @@
-<!DOCTYPE html>
-<html lang="zh">
-    <head>
-        <meta charset="UTF-8">
-<meta http-equiv="X-UA-Compatible" content="ie=edge">
-
-<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<meta name="author" content="">
-<meta name="description" content="xv6 在进程切换之时还有一些限制：不允许进程在执行switch函数的过程中，持有任何其他的锁。即进程在调用switch函数的过程中，必须要持有 p-&amp;gt;lock，但是同时又不能持有任何其他的锁
+<!doctype html><html lang=zh><head><meta charset=UTF-8><meta http-equiv=X-UA-Compatible content="ie=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=author content><meta name=description content="xv6 在进程切换之时还有一些限制：不允许进程在执行switch函数的过程中，持有任何其他的锁。即进程在调用switch函数的过程中，必须要持有 p-&amp;gt;lock，但是同时又不能持有任何其他的锁
 假设我们在一个只有一个CPU核的机器上，进程 P1 调用了 swtch 函数将 CPU 控制转给了调度器线程，调度器线程发现还有一个进程 P2 的内核线程正在等待被运行，所以调度器线程会切换到运行进程 P2。假设 P2 也想使用磁盘，UART 或者 console，它会对 P1 持有的锁调用 acquire，这是对于同一个锁的第二个 acquire 调用。这形成了死锁
 后面讨论 Sleep &amp;amp; Wakeup 如何工作时会再次使用它们
 Sleep &amp;amp; Wakeup 当我们写一个线程的代码时，有些场景需要等待一些特定的事件，比如读取 pipe 等待非空，磁盘写入一类，可能来自于 I/O，也可能来自于另一个进程
 我们怎么能让进程或者线程等待一些特定的事件呢？一种非常直观的方法是通过循环实现 busy-wait。假设我们想从一个 pipe 读取数据，我们就写一个循环一直等待 pipe 的 buffer 不为空
 如果你知道你要等待的事件极有可能在 0.1 微秒内发生，通过一个类似的循环等待或许是最正确的方式。通常来说在操作设备硬件的代码中会采用这样的等待方式
 如果事件可能需要数个毫秒（要知道现代 PC 每秒运行数亿次指令）甚至你都不知道事件要多久才能发生，那么我们就不想在这一直循环并且浪费本可以用来完成其他任务的 CPU 时间。这时我们想要通过类似 swtch 函数调用的方式出让 CPU，并在我们关心的事件发生时重新获取 CPU。Coordination 就是有关出让 CPU ，直到等待的事件发生再恢复执行的工具。与许多 Unix 风格操作系统一样，xv6 使用 Sleep &amp;amp; Wakeup 的方式
-// Atomically release lock and sleep on chan." />
-<meta name="keywords" content=", mit-6.s081, xv6, OS" />
-<meta name="robots" content="noodp" />
-<meta name="theme-color" content="" />
-<link rel="canonical" href="https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;sleep&#43;&#43;wakeup/" />
-
-
-    <title>
-        
-            xv6 实验日志 - Sleep &amp; Wakeup :: WhaleFall&#39;s Blog 
-        
-    </title>
-
-
-
-
-
-  <link rel="stylesheet" href="/main.min.ab5336003ba331300318b49292c672210905baf1ef5410a739f647e70c8808fa.css" integrity="sha256-q1M2ADujMTADGLSSksZyIQkFuvHvVBCnOfZH5wyICPo=" crossorigin="anonymous">
-
-
-
-
-
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="manifest" href="/site.webmanifest">
-    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="">
-    <link rel="shortcut icon" href="/favicon.ico">
-    <meta name="msapplication-TileColor" content="">
-
-
-<meta itemprop="name" content="xv6 实验日志 - Sleep &amp; Wakeup">
-<meta itemprop="description" content="xv6 在进程切换之时还有一些限制：不允许进程在执行switch函数的过程中，持有任何其他的锁。即进程在调用switch函数的过程中，必须要持有 p-&gt;lock，但是同时又不能持有任何其他的锁
+// Atomically release lock and sleep on chan."><meta name=keywords content=",mit-6.s081,xv6,OS"><meta name=robots content="noodp"><meta name=theme-color content><link rel=canonical href=https://whaleblog.github.io/posts/xv6+%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97+-+sleep++wakeup/><title>xv6 实验日志 - Sleep & Wakeup :: WhaleFall's Blog
+</title><link rel=stylesheet href=/main.min.ab5336003ba331300318b49292c672210905baf1ef5410a739f647e70c8808fa.css integrity="sha256-q1M2ADujMTADGLSSksZyIQkFuvHvVBCnOfZH5wyICPo=" crossorigin=anonymous><link rel=apple-touch-icon sizes=180x180 href=/apple-touch-icon.png><link rel=icon type=image/png sizes=32x32 href=/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicon-16x16.png><link rel=manifest href=/site.webmanifest><link rel=mask-icon href=/safari-pinned-tab.svg color><link rel="shortcut icon" href=/favicon.ico><meta name=msapplication-TileColor content><meta itemprop=name content="xv6 实验日志 - Sleep & Wakeup"><meta itemprop=description content="xv6 在进程切换之时还有一些限制：不允许进程在执行switch函数的过程中，持有任何其他的锁。即进程在调用switch函数的过程中，必须要持有 p->lock，但是同时又不能持有任何其他的锁
 假设我们在一个只有一个CPU核的机器上，进程 P1 调用了 swtch 函数将 CPU 控制转给了调度器线程，调度器线程发现还有一个进程 P2 的内核线程正在等待被运行，所以调度器线程会切换到运行进程 P2。假设 P2 也想使用磁盘，UART 或者 console，它会对 P1 持有的锁调用 acquire，这是对于同一个锁的第二个 acquire 调用。这形成了死锁
-后面讨论 Sleep &amp; Wakeup 如何工作时会再次使用它们
-Sleep &amp; Wakeup 当我们写一个线程的代码时，有些场景需要等待一些特定的事件，比如读取 pipe 等待非空，磁盘写入一类，可能来自于 I/O，也可能来自于另一个进程
+后面讨论 Sleep & Wakeup 如何工作时会再次使用它们
+Sleep & Wakeup 当我们写一个线程的代码时，有些场景需要等待一些特定的事件，比如读取 pipe 等待非空，磁盘写入一类，可能来自于 I/O，也可能来自于另一个进程
 我们怎么能让进程或者线程等待一些特定的事件呢？一种非常直观的方法是通过循环实现 busy-wait。假设我们想从一个 pipe 读取数据，我们就写一个循环一直等待 pipe 的 buffer 不为空
 如果你知道你要等待的事件极有可能在 0.1 微秒内发生，通过一个类似的循环等待或许是最正确的方式。通常来说在操作设备硬件的代码中会采用这样的等待方式
-如果事件可能需要数个毫秒（要知道现代 PC 每秒运行数亿次指令）甚至你都不知道事件要多久才能发生，那么我们就不想在这一直循环并且浪费本可以用来完成其他任务的 CPU 时间。这时我们想要通过类似 swtch 函数调用的方式出让 CPU，并在我们关心的事件发生时重新获取 CPU。Coordination 就是有关出让 CPU ，直到等待的事件发生再恢复执行的工具。与许多 Unix 风格操作系统一样，xv6 使用 Sleep &amp; Wakeup 的方式
-// Atomically release lock and sleep on chan."><meta itemprop="datePublished" content="2024-08-22T11:19:42+00:00" />
-<meta itemprop="dateModified" content="2024-08-22T11:19:42+00:00" />
-<meta itemprop="wordCount" content="903"><meta itemprop="image" content="https://whaleblog.github.io/" />
-<meta itemprop="keywords" content="mit-6.s081,xv6,OS," />
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:image" content="https://whaleblog.github.io/" /><meta name="twitter:title" content="xv6 实验日志 - Sleep &amp; Wakeup"/>
-<meta name="twitter:description" content="xv6 在进程切换之时还有一些限制：不允许进程在执行switch函数的过程中，持有任何其他的锁。即进程在调用switch函数的过程中，必须要持有 p-&gt;lock，但是同时又不能持有任何其他的锁
+如果事件可能需要数个毫秒（要知道现代 PC 每秒运行数亿次指令）甚至你都不知道事件要多久才能发生，那么我们就不想在这一直循环并且浪费本可以用来完成其他任务的 CPU 时间。这时我们想要通过类似 swtch 函数调用的方式出让 CPU，并在我们关心的事件发生时重新获取 CPU。Coordination 就是有关出让 CPU ，直到等待的事件发生再恢复执行的工具。与许多 Unix 风格操作系统一样，xv6 使用 Sleep & Wakeup 的方式
+// Atomically release lock and sleep on chan."><meta itemprop=datePublished content="2024-08-22T11:19:42+00:00"><meta itemprop=dateModified content="2024-08-22T11:19:42+00:00"><meta itemprop=wordCount content="903"><meta itemprop=image content="https://whaleblog.github.io/"><meta itemprop=keywords content="mit-6.s081,xv6,OS,"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://whaleblog.github.io/"><meta name=twitter:title content="xv6 实验日志 - Sleep & Wakeup"><meta name=twitter:description content="xv6 在进程切换之时还有一些限制：不允许进程在执行switch函数的过程中，持有任何其他的锁。即进程在调用switch函数的过程中，必须要持有 p->lock，但是同时又不能持有任何其他的锁
 假设我们在一个只有一个CPU核的机器上，进程 P1 调用了 swtch 函数将 CPU 控制转给了调度器线程，调度器线程发现还有一个进程 P2 的内核线程正在等待被运行，所以调度器线程会切换到运行进程 P2。假设 P2 也想使用磁盘，UART 或者 console，它会对 P1 持有的锁调用 acquire，这是对于同一个锁的第二个 acquire 调用。这形成了死锁
-后面讨论 Sleep &amp; Wakeup 如何工作时会再次使用它们
-Sleep &amp; Wakeup 当我们写一个线程的代码时，有些场景需要等待一些特定的事件，比如读取 pipe 等待非空，磁盘写入一类，可能来自于 I/O，也可能来自于另一个进程
+后面讨论 Sleep & Wakeup 如何工作时会再次使用它们
+Sleep & Wakeup 当我们写一个线程的代码时，有些场景需要等待一些特定的事件，比如读取 pipe 等待非空，磁盘写入一类，可能来自于 I/O，也可能来自于另一个进程
 我们怎么能让进程或者线程等待一些特定的事件呢？一种非常直观的方法是通过循环实现 busy-wait。假设我们想从一个 pipe 读取数据，我们就写一个循环一直等待 pipe 的 buffer 不为空
 如果你知道你要等待的事件极有可能在 0.1 微秒内发生，通过一个类似的循环等待或许是最正确的方式。通常来说在操作设备硬件的代码中会采用这样的等待方式
-如果事件可能需要数个毫秒（要知道现代 PC 每秒运行数亿次指令）甚至你都不知道事件要多久才能发生，那么我们就不想在这一直循环并且浪费本可以用来完成其他任务的 CPU 时间。这时我们想要通过类似 swtch 函数调用的方式出让 CPU，并在我们关心的事件发生时重新获取 CPU。Coordination 就是有关出让 CPU ，直到等待的事件发生再恢复执行的工具。与许多 Unix 风格操作系统一样，xv6 使用 Sleep &amp; Wakeup 的方式
-// Atomically release lock and sleep on chan."/>
-
-
-
-    <meta property="og:title" content="xv6 实验日志 - Sleep &amp; Wakeup" />
-<meta property="og:description" content="xv6 在进程切换之时还有一些限制：不允许进程在执行switch函数的过程中，持有任何其他的锁。即进程在调用switch函数的过程中，必须要持有 p-&gt;lock，但是同时又不能持有任何其他的锁
+如果事件可能需要数个毫秒（要知道现代 PC 每秒运行数亿次指令）甚至你都不知道事件要多久才能发生，那么我们就不想在这一直循环并且浪费本可以用来完成其他任务的 CPU 时间。这时我们想要通过类似 swtch 函数调用的方式出让 CPU，并在我们关心的事件发生时重新获取 CPU。Coordination 就是有关出让 CPU ，直到等待的事件发生再恢复执行的工具。与许多 Unix 风格操作系统一样，xv6 使用 Sleep & Wakeup 的方式
+// Atomically release lock and sleep on chan."><meta property="og:title" content="xv6 实验日志 - Sleep & Wakeup"><meta property="og:description" content="xv6 在进程切换之时还有一些限制：不允许进程在执行switch函数的过程中，持有任何其他的锁。即进程在调用switch函数的过程中，必须要持有 p->lock，但是同时又不能持有任何其他的锁
 假设我们在一个只有一个CPU核的机器上，进程 P1 调用了 swtch 函数将 CPU 控制转给了调度器线程，调度器线程发现还有一个进程 P2 的内核线程正在等待被运行，所以调度器线程会切换到运行进程 P2。假设 P2 也想使用磁盘，UART 或者 console，它会对 P1 持有的锁调用 acquire，这是对于同一个锁的第二个 acquire 调用。这形成了死锁
-后面讨论 Sleep &amp; Wakeup 如何工作时会再次使用它们
-Sleep &amp; Wakeup 当我们写一个线程的代码时，有些场景需要等待一些特定的事件，比如读取 pipe 等待非空，磁盘写入一类，可能来自于 I/O，也可能来自于另一个进程
+后面讨论 Sleep & Wakeup 如何工作时会再次使用它们
+Sleep & Wakeup 当我们写一个线程的代码时，有些场景需要等待一些特定的事件，比如读取 pipe 等待非空，磁盘写入一类，可能来自于 I/O，也可能来自于另一个进程
 我们怎么能让进程或者线程等待一些特定的事件呢？一种非常直观的方法是通过循环实现 busy-wait。假设我们想从一个 pipe 读取数据，我们就写一个循环一直等待 pipe 的 buffer 不为空
 如果你知道你要等待的事件极有可能在 0.1 微秒内发生，通过一个类似的循环等待或许是最正确的方式。通常来说在操作设备硬件的代码中会采用这样的等待方式
-如果事件可能需要数个毫秒（要知道现代 PC 每秒运行数亿次指令）甚至你都不知道事件要多久才能发生，那么我们就不想在这一直循环并且浪费本可以用来完成其他任务的 CPU 时间。这时我们想要通过类似 swtch 函数调用的方式出让 CPU，并在我们关心的事件发生时重新获取 CPU。Coordination 就是有关出让 CPU ，直到等待的事件发生再恢复执行的工具。与许多 Unix 风格操作系统一样，xv6 使用 Sleep &amp; Wakeup 的方式
-// Atomically release lock and sleep on chan." />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;sleep&#43;&#43;wakeup/" /><meta property="og:image" content="https://whaleblog.github.io/" /><meta property="article:section" content="posts" />
-<meta property="article:published_time" content="2024-08-22T11:19:42+00:00" />
-<meta property="article:modified_time" content="2024-08-22T11:19:42+00:00" />
-
-
-
-
-
-    <meta property="article:section" content="courses" />
-
-
-
-    <meta property="article:published_time" content="2024-08-22 11:19:42 &#43;0000 UTC" />
-
-
-
-
-
-
-
-
-
-
-
-
-    </head>
-
-    
-        <body>
-    
-    
-        <div class="container">
-            <header class="header">
-    <span class="header__inner">
-        <a href="/" style="text-decoration: none;">
-    <div class="logo">
-        
-            <span class="logo__mark">></span>
-            <span class="logo__text ">
-                WhaleFall</span>
-            <span class="logo__cursor" style=
-                  "
-                   
-                   ">
-            </span>
-        
-    </div>
-</a>
-
-
-        <span class="header__right">
-                <nav class="menu">
-    <ul class="menu__inner"><li><a href="/about">About</a></li><li><a href="/posts">Blog</a></li><li><a href="/tags">Tags</a></li>
-    </ul>
-</nav>
-
-                <span class="menu-trigger">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path d="M0 0h24v24H0z" fill="none"/>
-                        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-                    </svg>
-                </span>
-        </span>
-    </span>
-</header>
-
-
-            <div class="content">
-                
-  <main class="post">
-
-    <div class="post-info">
-      <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock">
-          <circle cx="12" cy="12" r="10"></circle>
-          <polyline points="12 6 12 12 16 14"></polyline>
-        </svg>
-        5分钟阅读
-
-        
-      </p>
-    </div>
-
-    <article>
-      <h1 class="post-title">
-        <a href="https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;sleep&#43;&#43;wakeup/">xv6 实验日志 - Sleep &amp; Wakeup</a>
-      </h1>
-
-      
-
-      
-
-      
-
-      <div class="post-content">
-        <p>xv6 在进程切换之时还有一些限制：不允许进程在执行switch函数的过程中，持有任何其他的锁。即进程在调用switch函数的过程中，必须要持有 p-&gt;lock，但是同时又不能持有任何其他的锁</p>
-<p>假设我们在一个只有一个CPU核的机器上，进程 P1 调用了 swtch 函数将 CPU 控制转给了调度器线程，调度器线程发现还有一个进程 P2 的内核线程正在等待被运行，所以调度器线程会切换到运行进程 P2。假设 P2 也想使用磁盘，UART 或者 console，它会对 P1 持有的锁调用 acquire，这是对于同一个锁的第二个 acquire 调用。这形成了死锁</p>
-<p>后面讨论 Sleep &amp; Wakeup 如何工作时会再次使用它们</p>
-<h2 id="sleep--wakeup">Sleep &amp; Wakeup</h2>
-<p>当我们写一个线程的代码时，有些场景需要等待一些特定的事件，比如读取 pipe 等待非空，磁盘写入一类，可能来自于 I/O，也可能来自于另一个进程</p>
-<p>我们怎么能让进程或者线程等待一些特定的事件呢？一种非常直观的方法是通过循环实现 busy-wait。假设我们想从一个 pipe 读取数据，我们就写一个循环一直等待 pipe 的 buffer 不为空</p>
-<p>如果你知道你要等待的事件极有可能在 0.1 微秒内发生，通过一个类似的循环等待或许是最正确的方式。通常来说在操作设备硬件的代码中会采用这样的等待方式</p>
-<p>如果事件可能需要数个毫秒（要知道现代 PC 每秒运行数亿次指令）甚至你都不知道事件要多久才能发生，那么我们就不想在这一直循环并且浪费本可以用来完成其他任务的 CPU 时间。这时我们想要通过类似 swtch 函数调用的方式出让 CPU，并在我们关心的事件发生时重新获取 CPU。Coordination 就是有关出让 CPU ，直到等待的事件发生再恢复执行的工具。与许多 Unix 风格操作系统一样，xv6 使用 Sleep &amp; Wakeup 的方式</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">// Atomically release lock and sleep on chan.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// Reacquires lock when awakened.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">void</span>
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">sleep</span>(<span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>chan, <span style="color:#66d9ef">struct</span> spinlock <span style="color:#f92672">*</span>lk)
-</span></span><span style="display:flex;"><span>{
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>p <span style="color:#f92672">=</span> <span style="color:#a6e22e">myproc</span>();
-</span></span><span style="display:flex;"><span>      
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Must acquire p-&gt;lock in order to
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// change p-&gt;state and then call sched.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// Once we hold p-&gt;lock, we can be
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// guaranteed that we won&#39;t miss any wakeup
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// (wakeup locks p-&gt;lock),
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// so it&#39;s okay to release lk.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);  <span style="color:#75715e">//DOC: sleeplock1
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">release</span>(lk);
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Go to sleep.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    p<span style="color:#f92672">-&gt;</span>chan <span style="color:#f92672">=</span> chan;
-</span></span><span style="display:flex;"><span>    p<span style="color:#f92672">-&gt;</span>state <span style="color:#f92672">=</span> SLEEPING;
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">sched</span>();
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Tidy up.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    p<span style="color:#f92672">-&gt;</span>chan <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Reacquire original lock.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">acquire</span>(lk);
-</span></span><span style="display:flex;"><span>}
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e">// Wake up all processes sleeping on chan.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// Must be called without any p-&gt;lock.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">void</span>
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">wakeup</span>(<span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>chan)
-</span></span><span style="display:flex;"><span>{
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>p;
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span>(p <span style="color:#f92672">=</span> proc; p <span style="color:#f92672">&lt;</span> <span style="color:#f92672">&amp;</span>proc[NPROC]; p<span style="color:#f92672">++</span>) {
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span>(p <span style="color:#f92672">!=</span> <span style="color:#a6e22e">myproc</span>()){
-</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span>(p<span style="color:#f92672">-&gt;</span>state <span style="color:#f92672">==</span> SLEEPING <span style="color:#f92672">&amp;&amp;</span> p<span style="color:#f92672">-&gt;</span>chan <span style="color:#f92672">==</span> chan) {
-</span></span><span style="display:flex;"><span>                p<span style="color:#f92672">-&gt;</span>state <span style="color:#f92672">=</span> RUNNABLE;
-</span></span><span style="display:flex;"><span>            }
-</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><p>sleep 在获取，释放锁之后，设置 channel 与 state 就切换到另外的线程</p>
-<p>wakeup 则根据 channel 将 SLEEPING 的进程状态改为 RUNABLE</p>
-<p>当我们调用 sleep 函数时，我们传入一个 sleep channel 表明我们等待的特定事件，当然，并不关心这个数值代表什么，当调用 wakeup 时我们希望能传入与调用 sleep 函数相同的 sleep channel 来表明想唤醒哪个线程</p>
-<p>Sleep &amp; wakeup 的一个优点是它们可以很灵活，它们不关心代码正在执行什么操作，你不用告诉 sleep 函数你在等待什么事件，你也不用告诉 wakeup 函数发生了什么事件，你只需要匹配好 64bit 的 sleep channel 就行</p>
-<p>不过，对于sleep函数，我们需要将一个锁作为第二个参数传入，这是一个稍微丑陋的实现。总的来说，不太可能设计一个通用的 sleep 函数并完全忽略需要等待的事件</p>
-<h2 id="lost-wakeup">Lost Wakeup</h2>
-<p>sleep 若只传入 sleep channel 可能会触发 lost wakeup，即 wakeup 在 proc 的状态变为 sleep 之前便已调用</p>
-<p>我们以 uart 设备的 uartwrite 与 uartintr 为例：这里牵涉到两个锁：进程的锁与 uart 设备的锁</p>
-<p>假如 sleep 没有接受 uart 锁的传参，就称这种 sleep 叫 broken_sleep 吧</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#66d9ef">void</span>
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">uartwrite</span>(<span style="color:#66d9ef">char</span> buf[],<span style="color:#66d9ef">int</span> n)
-</span></span><span style="display:flex;"><span>{
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>uart_tx_lock);
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span>(i <span style="color:#f92672">&lt;</span> n){
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">while</span>(tx_done <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>){
-</span></span><span style="display:flex;"><span>            <span style="color:#75715e">//UART is busy sending a character.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>            <span style="color:#75715e">//wait for it to interrupt.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>            <span style="color:#75715e">//sleep(&amp;tx_chan,&amp;uart_tx_lock);
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>            <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>uart_tx_lock);
-</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">broken_sleep</span>(<span style="color:#f92672">&amp;</span>tx_chan);
-</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>uart_tx_lock);
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>        
-</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">WriteReg</span>(THR, buf[i]);
-</span></span><span style="display:flex;"><span>        i <span style="color:#f92672">+=</span><span style="color:#ae81ff">1</span> ;
-</span></span><span style="display:flex;"><span>        tx_done <span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>;
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>      
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>uart_tx_lock);
-</span></span><span style="display:flex;"><span>}
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span>
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">uartintr</span>(<span style="color:#66d9ef">void</span>)
-</span></span><span style="display:flex;"><span>{
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>uart_tx_lock);
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span>(<span style="color:#a6e22e">ReadReg</span>(LSR) <span style="color:#f92672">&amp;</span> LSR_TX_IDLE){
-</span></span><span style="display:flex;"><span>        <span style="color:#75715e">//UART finished transmitting;wake up any sending thread.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        tx_done <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
-</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">wakeup</span>(<span style="color:#f92672">&amp;</span>tx_chan);
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>uart_tx_lock);
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><p>可以看到 uartwrite 的 broken_sleep 上下，先释放了 uart_tx_lock，sleep 结束后又将其锁上</p>
-<p>假如说没有这两把锁是不行的，uartwrite 函数一开始就请求了 uart 设备的锁（毕竟 tx_done 和 uart 本身是共享的，必须要加锁），而在其 while 循环内，只有当 tx_done != 0 时才能退出循环，但是只有在 uartintr 里面才可能将这个值设为非 0，但是这个中断处理函数最开始就会请求 uart 的锁，但这是锁被 uartwrite 持有，deadly embrace</p>
-<p>上面加锁方式的问题是，uartwrite 在期望中断处理程序执行的同时又持有了锁。而我们唯一期望中断处理程序执行的位置就是 sleep 执行期间，其他的时候 uartwrite 持有锁是没有问题的。所以我们在 sleep 之前释放了锁，待其放回再锁上</p>
-<p>好的，假如我们有一个核正运行到 uartwrite 的 sleep 前面，此时另一个 CPU 核正在执行 uartintr 的 acquire。在锁释放的一瞬间，后者得到了锁，发现 UART 硬件完成了发送上一个字符，之后会设置 tx_done 为 1，最后再调用 wakeup 函数。但假如在 wakeup 的时候 sleep 还没调用，uartwrite 的线程并没又进入 SLEEPING 呢？那么 wakeup 并没有唤醒任何进程，而这次的 sleep 没有人会唤醒它。这就出现了 Lost Wakeup 问题</p>
-<blockquote>
-<p>学生提问：当从sleep函数中唤醒时，不是已经知道是来自UART的中断处理程序调用wakeup的结果吗？这样的话tx_done有些多余。</p>
-<p>Robert教授：我想你的问题也可以描述为：为什么需要通过一个循环while(tx_done == 0)来调用sleep函数？这个问题的答案适用于一个更通用的场景：实际中不太可能将sleep和wakeup精确匹配。并不是说sleep函数返回了，你等待的事件就一定会发生。举个例子，假设我们有两个进程同时想写UART，它们都在uartwrite函数中。可能发生这种场景，当一个进程写完一个字符之后，会进入SLEEPING状态并释放锁，而另一个进程可以在这时进入到循环并等待UART空闲下来。之后两个进程都进入到SLEEPING状态，当发生中断时UART可以再次接收一个字符，两个进程都会被唤醒，但是只有一个进程应该写入字符，所以我们才需要在sleep外面包一层while循环。实际上，你可以在XV6中的每一个sleep函数调用都被一个while循环包着。因为事实是，你或许被唤醒了，但是其他人将你等待的事件拿走了，所以你还得继续sleep。这种现象还挺普遍的。</p>
-</blockquote>
-<p>在最初给的 sleep 与 wakeup 的源代码便解决了这个问题，这是由下面这些规则确保的：</p>
-<ul>
-<li>
-<p>调用sleep时需要持有 condition lock，这样 sleep 函数才能知道相应的锁</p>
-</li>
-<li>
-<p>sleep 函数只有在获取到进程的锁 p-&gt;lock 之后，才能释放 condition lock</p>
-</li>
-<li>
-<p>wakeup 需要同时持有两个锁才能查看进程</p>
-</li>
-</ul>
-<h2 id="exit">Exit</h2>
-<p>在 xv6 中，一个进程如果退出的话，我们需要释放用户内存，释放 page table，释放 rapframe 对象，将进程在进程表单中标为 REUSABLE</p>
-<p>这里会产生的两大问题：</p>
-<ul>
-<li>
-<p>首先我们不能直接单方面的摧毁另一个线程。另一个线程可能正在另一个CPU核上运行，并使用着自己的栈；也可能另一个线程正在内核中持有了锁；也可能另一个线程正在更新一个复杂的内核数据</p>
-</li>
-<li>
-<p>另一个问题是，即使一个线程调用了exit系统调用，并且是自己决定要退出，它仍然还是要运行一小段代码。但只要它还在执行代码，它就不能释放正在使用的资源</p>
-</li>
-</ul>
-<p>xv6 有两个函数与关闭线程进程相关。第一个是 exit，第二个是 kill。让我们先来看位于 proc.c 中的 exit 函数</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">// Exit the current process.  Does not return.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// An exited process remains in the zombie state
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// until its parent calls wait().
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">void</span>
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">exit</span>(<span style="color:#66d9ef">int</span> status)
-</span></span><span style="display:flex;"><span>{
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>p <span style="color:#f92672">=</span> <span style="color:#a6e22e">myproc</span>();
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span>(p <span style="color:#f92672">==</span> initproc)
-</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">panic</span>(<span style="color:#e6db74">&#34;init exiting&#34;</span>);
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Close all open files.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">for</span>(<span style="color:#66d9ef">int</span> fd <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; fd <span style="color:#f92672">&lt;</span> NOFILE; fd<span style="color:#f92672">++</span>){
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span>(p<span style="color:#f92672">-&gt;</span>ofile[fd]){
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">struct</span> file <span style="color:#f92672">*</span>f <span style="color:#f92672">=</span> p<span style="color:#f92672">-&gt;</span>ofile[fd];
-</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">fileclose</span>(f);
-</span></span><span style="display:flex;"><span>            p<span style="color:#f92672">-&gt;</span>ofile[fd] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">begin_op</span>();
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">iput</span>(p<span style="color:#f92672">-&gt;</span>cwd);
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">end_op</span>();
-</span></span><span style="display:flex;"><span>    p<span style="color:#f92672">-&gt;</span>cwd <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>wait_lock);
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Give any children to init.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">reparent</span>(p);
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Parent might be sleeping in wait().
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">wakeup</span>(p<span style="color:#f92672">-&gt;</span>parent);
-</span></span><span style="display:flex;"><span>      
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    p<span style="color:#f92672">-&gt;</span>xstate <span style="color:#f92672">=</span> status;
-</span></span><span style="display:flex;"><span>    p<span style="color:#f92672">-&gt;</span>state <span style="color:#f92672">=</span> ZOMBIE;
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>wait_lock);
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Jump into the scheduler, never to return.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">sched</span>();
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">panic</span>(<span style="color:#e6db74">&#34;zombie exit&#34;</span>);
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><p>首先 exit 关闭了所有已打开的文件，将当前目录的引用释放给文件系统，接下来需要设置子进程的父进程为 init 进程，之后通过调用 wakeup 函数唤醒当前进程的父进程，然后设置进程状态为 ZOMBIE。现在进程还没有完全释放它的资源，还不能被重用，并且进程不会再运行。最后 sched 调度其他的进程</p>
-<h2 id="wait">Wait</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">// Wait for a child process to exit and return its pid.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// Return -1 if this process has no children.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">int</span>
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">wait</span>(uint64 addr)
-</span></span><span style="display:flex;"><span>{
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>np;
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> havekids, pid;
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>p <span style="color:#f92672">=</span> <span style="color:#a6e22e">myproc</span>();
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>wait_lock);
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span>(;;){
-</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// Scan through table looking for exited children.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        havekids <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span>(np <span style="color:#f92672">=</span> proc; np <span style="color:#f92672">&lt;</span> <span style="color:#f92672">&amp;</span>proc[NPROC]; np<span style="color:#f92672">++</span>){
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span>(np<span style="color:#f92672">-&gt;</span>parent <span style="color:#f92672">==</span> p){
-</span></span><span style="display:flex;"><span>                <span style="color:#75715e">// make sure the child isn&#39;t still in exit() or swtch().
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>                <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>np<span style="color:#f92672">-&gt;</span>lock);
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>                havekids <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
-</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">if</span>(np<span style="color:#f92672">-&gt;</span>state <span style="color:#f92672">==</span> ZOMBIE){
-</span></span><span style="display:flex;"><span>                    <span style="color:#75715e">// Found one.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>                    pid <span style="color:#f92672">=</span> np<span style="color:#f92672">-&gt;</span>pid;
-</span></span><span style="display:flex;"><span>                    <span style="color:#66d9ef">if</span>(addr <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">copyout</span>(p<span style="color:#f92672">-&gt;</span>pagetable, addr, (<span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>)<span style="color:#f92672">&amp;</span>np<span style="color:#f92672">-&gt;</span>xstate,<span style="color:#66d9ef">sizeof</span>(np<span style="color:#f92672">-&gt;</span>xstate)) <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span>) {
-</span></span><span style="display:flex;"><span>                    <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>np<span style="color:#f92672">-&gt;</span>lock);
-</span></span><span style="display:flex;"><span>                    <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>wait_lock);
-</span></span><span style="display:flex;"><span>                    <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>;
-</span></span><span style="display:flex;"><span>                }
-</span></span><span style="display:flex;"><span>                <span style="color:#a6e22e">freeproc</span>(np);
-</span></span><span style="display:flex;"><span>                <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>np<span style="color:#f92672">-&gt;</span>lock);
-</span></span><span style="display:flex;"><span>                <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>wait_lock);
-</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">return</span> pid;
-</span></span><span style="display:flex;"><span>            }
-</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>np<span style="color:#f92672">-&gt;</span>lock);
-</span></span><span style="display:flex;"><span>      }
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// No point waiting if we don&#39;t have any children.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">if</span>(<span style="color:#f92672">!</span>havekids <span style="color:#f92672">||</span> p<span style="color:#f92672">-&gt;</span>killed){
-</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>wait_lock);
-</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>;
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>        
-</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// Wait for a child to exit.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#a6e22e">sleep</span>(p, <span style="color:#f92672">&amp;</span>wait_lock);  <span style="color:#75715e">//DOC: wait-sleep
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    }
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><p>可以看到，wait 会循环扫描进程表单，去查找自己 ZOMBIE 的子进程。找到后，它会调用 freeproc 去释放子进程例如 trapframe，pagetable 等资源，并将 state 置为 UNUSED</p>
-<p>wait 实际上也是进程退出的一个重要组成部分。在 Unix 中，对于每一个退出的进程，都需要有一个对应的 wait 系统调用，这就是为什么当一个进程退出时，它的子进程需要变成 init 进程的子进程。init 进程的工作就是在一个循环中不停调用 wait，因为每个进程都需要对应一个 wait，这样它的父进程才能调用 freeproc 函数，并清理进程的资源</p>
-<p>当父进程完成了清理进程的所有资源，子进程的状态会被设置成 UNUSED。之后，fork 系统调用才能重用进程在进程表单的位置。直到子进程 exit 的最后，它都没有释放所有的资源，因为它还在运行的过程中，所以不能释放这些资源。最后是父进程释放了运行子进程代码所需要的资源。这样的设计可以让我们极大的精简 exit 的实现</p>
-<h2 id="kill">Kill</h2>
-<p>kill 的实现比想象中更加的&hellip;&hellip;朴素。Uni x中的一个进程可以将另一个进程的 ID 传递给 kill 系统调用，并让另一个进程停止运行。但是这会牵扯到上面讲过的问题，比如我们想要杀掉的进程的内核线程还在更新一些数据，像更新文件系统，创建一个文件之类的，我们不能就这样杀掉。所以 kill 系统调用不能直接停止目标进程的运行。实际上，在 xv6 和其他的 Unix 系统中，kill 基本上不做任何事情</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#75715e">// Kill the process with the given pid.
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// The victim won&#39;t exit until it tries to return
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// to user space (see usertrap() in trap.c).
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">int</span>
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">kill</span>(<span style="color:#66d9ef">int</span> pid)
-</span></span><span style="display:flex;"><span>{
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> proc <span style="color:#f92672">*</span>p;
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span>(p <span style="color:#f92672">=</span> proc; p <span style="color:#f92672">&lt;</span> <span style="color:#f92672">&amp;</span>proc[NPROC]; p<span style="color:#f92672">++</span>){
-</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">acquire</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span>(p<span style="color:#f92672">-&gt;</span>pid <span style="color:#f92672">==</span> pid){
-</span></span><span style="display:flex;"><span>            p<span style="color:#f92672">-&gt;</span>killed <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span>(p<span style="color:#f92672">-&gt;</span>state <span style="color:#f92672">==</span> SLEEPING){
-</span></span><span style="display:flex;"><span>                <span style="color:#75715e">// Wake process from sleep().
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>                p<span style="color:#f92672">-&gt;</span>state <span style="color:#f92672">=</span> RUNNABLE;
-</span></span><span style="display:flex;"><span>            }
-</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>p<span style="color:#f92672">-&gt;</span>lock);
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>;
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><p>它先扫描进程表单，找到目标进程。然后只是将进程的 proc 结构体中 killed 标志位设置为 1。如果进程正在 SLEEPING 状态，将其设置为 RUNNABLE</p>
-<p>而目标进程运行到内核代码中能安全停止运行的位置时，会检查自己的 killed 标志位，如果为 1，目标进程会自愿的执行 exit(-1)。在 usertrap 的最后就会做这样的检查，例如当一个定时器中断到来，usertrap 发现 p-&gt;killed === 1，就直接 exit 了</p>
-<p>所以 kill 系统调用并不是真正的立即停止进程的运行，从调用 kill，到另一个进程真正退出，中间可能有很明显的延时</p>
-<p>但其实在 xv6 的很多位置中，如果进程在 SLEEPING 状态时被 kill 了，进程会实际的退出。首先 kill 会将 SLEEPING 改为 RUNABLE，这样调度器线程会重新运行这个线程，而在很多地方的 sleep 循环内（比如下面的 piperead），会对 killed 进行检测：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#66d9ef">while</span>(pi<span style="color:#f92672">-&gt;</span>nread <span style="color:#f92672">==</span> pi<span style="color:#f92672">-&gt;</span>nwrite <span style="color:#f92672">&amp;&amp;</span> pi<span style="color:#f92672">-&gt;</span>writeopen){  <span style="color:#75715e">//DOC: pipe-empty
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">if</span>(pr<span style="color:#f92672">-&gt;</span>killed){
-</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">release</span>(<span style="color:#f92672">&amp;</span>pi<span style="color:#f92672">-&gt;</span>lock);
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>;
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">sleep</span>(<span style="color:#f92672">&amp;</span>pi<span style="color:#f92672">-&gt;</span>nread, <span style="color:#f92672">&amp;</span>pi<span style="color:#f92672">-&gt;</span>lock); <span style="color:#75715e">//DOC: piperead-sleep
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>}
-</span></span></code></pre></div><p>于是函数会立马返回到 usertrap，然后 exit</p>
-<p>因为 pipe 再度 sleep 的时候，pipe 内大概率还是没有数据，所以 kill 了影响不大。但是在更新文件系统这样的操作时， while 里面就不会检查 killed 了，因为必须等待这个操作完成</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span><span style="color:#66d9ef">while</span>(b<span style="color:#f92672">-&gt;</span>disk <span style="color:#f92672">==</span> <span style="color:#ae81ff">1</span>)
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">sleep</span>(b, <span style="color:#f92672">&amp;</span>disk.vdisk_lock);
-</span></span></code></pre></div>
-      </div>
-    </article>
-
-    <hr />
-
-    <div class="post-info">
-      
-    <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg>
-
-        <span class="tag"><a href="https://whaleblog.github.io/tags/mit-6.s081/">mit-6.s081</a></span>
-        <span class="tag"><a href="https://whaleblog.github.io/tags/xv6/">xv6</a></span>
-        <span class="tag"><a href="https://whaleblog.github.io/tags/os/">OS</a></span>
-        
-    </p>
-
-      
-    <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-folder meta-icon"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-
-        <span class="tag"><a href="https://whaleblog.github.io/categories/courses/">courses</a></span>
-        
-    </p>
-
-
-      <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-          <polyline points="10 9 9 9 8 9"></polyline>
-        </svg>
-        903字
-      </p>
-
-      <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="16" y1="2" x2="16" y2="6"></line>
-          <line x1="8" y1="2" x2="8" y2="6"></line>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-        </svg>
-        
-          2024-08-22 19:19
-        
-
-         
-          
-        
-      </p>
-    </div>
-      <hr />
-      <div class="sharing-buttons">
-        
-
-  
-    
-    
-  
-
-
-
-
-  
-      
-        
-    
-  
-
-
-
-
-  
-    
-      
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-			
-    
-  
-
-
-
-
-  
-      
-    
-  
-
-
-<style>
-.social-icons {
-  display: flex;
-  align-items: center;
-  gap: 20px;  
-  margin-top: 15px;
-}
-.social-icons a svg {
-  width: 20px;  
-  height: 20px;
-}
-</style>
-
-<div class="social-icons">
-  
-  <a href="mailto:166845494@qq.com" target="_self" rel="noopener" aria-label="Email me" title="Email me">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-      <polyline points="22,6 12,13 2,6"></polyline>
-    </svg>
-  </a>
-
-  
-  <a href="https://github.com/WhaleFall-UESTC" target="_blank" rel="noopener" aria-label="Follow on GitHub" title="Follow on GitHub">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke-width="2">
-      <path d="M12 0C5.373 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.298 24 12c0-6.627-5.373-12-12-12z"/>
-    </svg>
-  </a>
-</div>
-
-      </div>
-
-    
-    <div class="pagination">
-        
-        <div class="pagination__title">
-            <span class="pagination__title-h">浏览其他文章</span>
-            <hr />
-        </div>
-        
-
-        <div class="pagination__buttons">
-            
-            <span class="button previous">
-                <a href="https://whaleblog.github.io/posts/%E5%AE%8F%E5%86%85%E6%A0%B8%E4%B8%8E%E5%BE%AE%E5%86%85%E6%A0%B8/">
-                    <span class="button__icon">←</span>
-                    <span class="button__text">宏内核与微内核</span>
-                </a>
-            </span>
-            
-
-            
-            <span class="button next">
-                <a href="https://whaleblog.github.io/posts/xv6&#43;%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97&#43;-&#43;thread/">
-                    <span class="button__text">xv6 实验日志 - Thread</span>
-                    <span class="button__icon">→</span>
-                </a>
-            </span>
-            
-        </div>
-    </div>
-
-
-    
-
-    
-
-    
-
-  </main>
-
-            </div>
-
-            
-                <footer class="footer">
-    
-    
-</footer>
-
-            
-        </div>
-
-        
-
-
-
-<script type="text/javascript" src="/bundle.min.ac2a4bcaed631ec2dc154407be7f09fc28da37de71fae6dee6711b2a3d1622770f87d3cda22c460e9a68ff619bdb1dd75cb7a5d33f159a54e419736cc4541087.js" integrity="sha512-rCpLyu1jHsLcFUQHvn8J/CjaN95x&#43;ube5nEbKj0WIncPh9PNoixGDppo/2Gb2x3XXLel0z8VmlTkGXNsxFQQhw=="></script>
-
-
-
-
-    </body>
-</html>
+如果事件可能需要数个毫秒（要知道现代 PC 每秒运行数亿次指令）甚至你都不知道事件要多久才能发生，那么我们就不想在这一直循环并且浪费本可以用来完成其他任务的 CPU 时间。这时我们想要通过类似 swtch 函数调用的方式出让 CPU，并在我们关心的事件发生时重新获取 CPU。Coordination 就是有关出让 CPU ，直到等待的事件发生再恢复执行的工具。与许多 Unix 风格操作系统一样，xv6 使用 Sleep & Wakeup 的方式
+// Atomically release lock and sleep on chan."><meta property="og:type" content="article"><meta property="og:url" content="https://whaleblog.github.io/posts/xv6+%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97+-+sleep++wakeup/"><meta property="og:image" content="https://whaleblog.github.io/"><meta property="article:section" content="posts"><meta property="article:published_time" content="2024-08-22T11:19:42+00:00"><meta property="article:modified_time" content="2024-08-22T11:19:42+00:00"><meta property="article:section" content="courses"><meta property="article:published_time" content="2024-08-22 11:19:42 +0000 UTC"></head><body><div class=container><header class=header><span class=header__inner><a href=/ style=text-decoration:none><div class=logo><span class=logo__mark>></span>
+<span class=logo__text>WhaleFall</span>
+<span class=logo__cursor></span></div></a><span class=header__right><nav class=menu><ul class=menu__inner><li><a href=/about>About</a></li><li><a href=/posts>Blog</a></li><li><a href=/tags>Tags</a></li></ul></nav><span class=menu-trigger><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></span></span></span></header><div class=content><main class=post><div class=post-info><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+5分钟阅读</p></div><article><h1 class=post-title><a href=https://whaleblog.github.io/posts/xv6+%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97+-+sleep++wakeup/>xv6 实验日志 - Sleep & Wakeup</a></h1><div class=post-content><p>xv6 在进程切换之时还有一些限制：不允许进程在执行switch函数的过程中，持有任何其他的锁。即进程在调用switch函数的过程中，必须要持有 p->lock，但是同时又不能持有任何其他的锁</p><p>假设我们在一个只有一个CPU核的机器上，进程 P1 调用了 swtch 函数将 CPU 控制转给了调度器线程，调度器线程发现还有一个进程 P2 的内核线程正在等待被运行，所以调度器线程会切换到运行进程 P2。假设 P2 也想使用磁盘，UART 或者 console，它会对 P1 持有的锁调用 acquire，这是对于同一个锁的第二个 acquire 调用。这形成了死锁</p><p>后面讨论 Sleep & Wakeup 如何工作时会再次使用它们</p><h2 id=sleep--wakeup>Sleep & Wakeup</h2><p>当我们写一个线程的代码时，有些场景需要等待一些特定的事件，比如读取 pipe 等待非空，磁盘写入一类，可能来自于 I/O，也可能来自于另一个进程</p><p>我们怎么能让进程或者线程等待一些特定的事件呢？一种非常直观的方法是通过循环实现 busy-wait。假设我们想从一个 pipe 读取数据，我们就写一个循环一直等待 pipe 的 buffer 不为空</p><p>如果你知道你要等待的事件极有可能在 0.1 微秒内发生，通过一个类似的循环等待或许是最正确的方式。通常来说在操作设备硬件的代码中会采用这样的等待方式</p><p>如果事件可能需要数个毫秒（要知道现代 PC 每秒运行数亿次指令）甚至你都不知道事件要多久才能发生，那么我们就不想在这一直循环并且浪费本可以用来完成其他任务的 CPU 时间。这时我们想要通过类似 swtch 函数调用的方式出让 CPU，并在我们关心的事件发生时重新获取 CPU。Coordination 就是有关出让 CPU ，直到等待的事件发生再恢复执行的工具。与许多 Unix 风格操作系统一样，xv6 使用 Sleep & Wakeup 的方式</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=display:flex><span><span style=color:#75715e>// Atomically release lock and sleep on chan.
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// Reacquires lock when awakened.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>void</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>sleep</span>(<span style=color:#66d9ef>void</span> <span style=color:#f92672>*</span>chan, <span style=color:#66d9ef>struct</span> spinlock <span style=color:#f92672>*</span>lk)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>struct</span> proc <span style=color:#f92672>*</span>p <span style=color:#f92672>=</span> <span style=color:#a6e22e>myproc</span>();
+</span></span><span style=display:flex><span>      
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Must acquire p-&gt;lock in order to
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// change p-&gt;state and then call sched.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// Once we hold p-&gt;lock, we can be
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// guaranteed that we won&#39;t miss any wakeup
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// (wakeup locks p-&gt;lock),
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// so it&#39;s okay to release lk.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>acquire</span>(<span style=color:#f92672>&amp;</span>p<span style=color:#f92672>-&gt;</span>lock);  <span style=color:#75715e>//DOC: sleeplock1
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>release</span>(lk);
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Go to sleep.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    p<span style=color:#f92672>-&gt;</span>chan <span style=color:#f92672>=</span> chan;
+</span></span><span style=display:flex><span>    p<span style=color:#f92672>-&gt;</span>state <span style=color:#f92672>=</span> SLEEPING;
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>sched</span>();
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Tidy up.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    p<span style=color:#f92672>-&gt;</span>chan <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Reacquire original lock.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>release</span>(<span style=color:#f92672>&amp;</span>p<span style=color:#f92672>-&gt;</span>lock);
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>acquire</span>(lk);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// Wake up all processes sleeping on chan.
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// Must be called without any p-&gt;lock.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>void</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>wakeup</span>(<span style=color:#66d9ef>void</span> <span style=color:#f92672>*</span>chan)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>struct</span> proc <span style=color:#f92672>*</span>p;
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span>(p <span style=color:#f92672>=</span> proc; p <span style=color:#f92672>&lt;</span> <span style=color:#f92672>&amp;</span>proc[NPROC]; p<span style=color:#f92672>++</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span>(p <span style=color:#f92672>!=</span> <span style=color:#a6e22e>myproc</span>()){
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>acquire</span>(<span style=color:#f92672>&amp;</span>p<span style=color:#f92672>-&gt;</span>lock);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span>(p<span style=color:#f92672>-&gt;</span>state <span style=color:#f92672>==</span> SLEEPING <span style=color:#f92672>&amp;&amp;</span> p<span style=color:#f92672>-&gt;</span>chan <span style=color:#f92672>==</span> chan) {
+</span></span><span style=display:flex><span>                p<span style=color:#f92672>-&gt;</span>state <span style=color:#f92672>=</span> RUNNABLE;
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>release</span>(<span style=color:#f92672>&amp;</span>p<span style=color:#f92672>-&gt;</span>lock);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>sleep 在获取，释放锁之后，设置 channel 与 state 就切换到另外的线程</p><p>wakeup 则根据 channel 将 SLEEPING 的进程状态改为 RUNABLE</p><p>当我们调用 sleep 函数时，我们传入一个 sleep channel 表明我们等待的特定事件，当然，并不关心这个数值代表什么，当调用 wakeup 时我们希望能传入与调用 sleep 函数相同的 sleep channel 来表明想唤醒哪个线程</p><p>Sleep & wakeup 的一个优点是它们可以很灵活，它们不关心代码正在执行什么操作，你不用告诉 sleep 函数你在等待什么事件，你也不用告诉 wakeup 函数发生了什么事件，你只需要匹配好 64bit 的 sleep channel 就行</p><p>不过，对于sleep函数，我们需要将一个锁作为第二个参数传入，这是一个稍微丑陋的实现。总的来说，不太可能设计一个通用的 sleep 函数并完全忽略需要等待的事件</p><h2 id=lost-wakeup>Lost Wakeup</h2><p>sleep 若只传入 sleep channel 可能会触发 lost wakeup，即 wakeup 在 proc 的状态变为 sleep 之前便已调用</p><p>我们以 uart 设备的 uartwrite 与 uartintr 为例：这里牵涉到两个锁：进程的锁与 uart 设备的锁</p><p>假如 sleep 没有接受 uart 锁的传参，就称这种 sleep 叫 broken_sleep 吧</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=display:flex><span><span style=color:#66d9ef>void</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>uartwrite</span>(<span style=color:#66d9ef>char</span> buf[],<span style=color:#66d9ef>int</span> n)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>acquire</span>(<span style=color:#f92672>&amp;</span>uart_tx_lock);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>int</span> i <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>while</span>(i <span style=color:#f92672>&lt;</span> n){
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>while</span>(tx_done <span style=color:#f92672>==</span> <span style=color:#ae81ff>0</span>){
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//UART is busy sending a character.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            <span style=color:#75715e>//wait for it to interrupt.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            <span style=color:#75715e>//sleep(&amp;tx_chan,&amp;uart_tx_lock);
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            <span style=color:#a6e22e>release</span>(<span style=color:#f92672>&amp;</span>uart_tx_lock);
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>broken_sleep</span>(<span style=color:#f92672>&amp;</span>tx_chan);
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>acquire</span>(<span style=color:#f92672>&amp;</span>uart_tx_lock);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>WriteReg</span>(THR, buf[i]);
+</span></span><span style=display:flex><span>        i <span style=color:#f92672>+=</span><span style=color:#ae81ff>1</span> ;
+</span></span><span style=display:flex><span>        tx_done <span style=color:#f92672>=</span><span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>      
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>release</span>(<span style=color:#f92672>&amp;</span>uart_tx_lock);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>void</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>uartintr</span>(<span style=color:#66d9ef>void</span>)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>acquire</span>(<span style=color:#f92672>&amp;</span>uart_tx_lock);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span>(<span style=color:#a6e22e>ReadReg</span>(LSR) <span style=color:#f92672>&amp;</span> LSR_TX_IDLE){
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//UART finished transmitting;wake up any sending thread.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        tx_done <span style=color:#f92672>=</span> <span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>wakeup</span>(<span style=color:#f92672>&amp;</span>tx_chan);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>release</span>(<span style=color:#f92672>&amp;</span>uart_tx_lock);
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>可以看到 uartwrite 的 broken_sleep 上下，先释放了 uart_tx_lock，sleep 结束后又将其锁上</p><p>假如说没有这两把锁是不行的，uartwrite 函数一开始就请求了 uart 设备的锁（毕竟 tx_done 和 uart 本身是共享的，必须要加锁），而在其 while 循环内，只有当 tx_done != 0 时才能退出循环，但是只有在 uartintr 里面才可能将这个值设为非 0，但是这个中断处理函数最开始就会请求 uart 的锁，但这是锁被 uartwrite 持有，deadly embrace</p><p>上面加锁方式的问题是，uartwrite 在期望中断处理程序执行的同时又持有了锁。而我们唯一期望中断处理程序执行的位置就是 sleep 执行期间，其他的时候 uartwrite 持有锁是没有问题的。所以我们在 sleep 之前释放了锁，待其放回再锁上</p><p>好的，假如我们有一个核正运行到 uartwrite 的 sleep 前面，此时另一个 CPU 核正在执行 uartintr 的 acquire。在锁释放的一瞬间，后者得到了锁，发现 UART 硬件完成了发送上一个字符，之后会设置 tx_done 为 1，最后再调用 wakeup 函数。但假如在 wakeup 的时候 sleep 还没调用，uartwrite 的线程并没又进入 SLEEPING 呢？那么 wakeup 并没有唤醒任何进程，而这次的 sleep 没有人会唤醒它。这就出现了 Lost Wakeup 问题</p><blockquote><p>学生提问：当从sleep函数中唤醒时，不是已经知道是来自UART的中断处理程序调用wakeup的结果吗？这样的话tx_done有些多余。</p><p>Robert教授：我想你的问题也可以描述为：为什么需要通过一个循环while(tx_done == 0)来调用sleep函数？这个问题的答案适用于一个更通用的场景：实际中不太可能将sleep和wakeup精确匹配。并不是说sleep函数返回了，你等待的事件就一定会发生。举个例子，假设我们有两个进程同时想写UART，它们都在uartwrite函数中。可能发生这种场景，当一个进程写完一个字符之后，会进入SLEEPING状态并释放锁，而另一个进程可以在这时进入到循环并等待UART空闲下来。之后两个进程都进入到SLEEPING状态，当发生中断时UART可以再次接收一个字符，两个进程都会被唤醒，但是只有一个进程应该写入字符，所以我们才需要在sleep外面包一层while循环。实际上，你可以在XV6中的每一个sleep函数调用都被一个while循环包着。因为事实是，你或许被唤醒了，但是其他人将你等待的事件拿走了，所以你还得继续sleep。这种现象还挺普遍的。</p></blockquote><p>在最初给的 sleep 与 wakeup 的源代码便解决了这个问题，这是由下面这些规则确保的：</p><ul><li><p>调用sleep时需要持有 condition lock，这样 sleep 函数才能知道相应的锁</p></li><li><p>sleep 函数只有在获取到进程的锁 p->lock 之后，才能释放 condition lock</p></li><li><p>wakeup 需要同时持有两个锁才能查看进程</p></li></ul><h2 id=exit>Exit</h2><p>在 xv6 中，一个进程如果退出的话，我们需要释放用户内存，释放 page table，释放 rapframe 对象，将进程在进程表单中标为 REUSABLE</p><p>这里会产生的两大问题：</p><ul><li><p>首先我们不能直接单方面的摧毁另一个线程。另一个线程可能正在另一个CPU核上运行，并使用着自己的栈；也可能另一个线程正在内核中持有了锁；也可能另一个线程正在更新一个复杂的内核数据</p></li><li><p>另一个问题是，即使一个线程调用了exit系统调用，并且是自己决定要退出，它仍然还是要运行一小段代码。但只要它还在执行代码，它就不能释放正在使用的资源</p></li></ul><p>xv6 有两个函数与关闭线程进程相关。第一个是 exit，第二个是 kill。让我们先来看位于 proc.c 中的 exit 函数</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=display:flex><span><span style=color:#75715e>// Exit the current process.  Does not return.
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// An exited process remains in the zombie state
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// until its parent calls wait().
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>void</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>exit</span>(<span style=color:#66d9ef>int</span> status)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>struct</span> proc <span style=color:#f92672>*</span>p <span style=color:#f92672>=</span> <span style=color:#a6e22e>myproc</span>();
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span>(p <span style=color:#f92672>==</span> initproc)
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>panic</span>(<span style=color:#e6db74>&#34;init exiting&#34;</span>);
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Close all open files.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>for</span>(<span style=color:#66d9ef>int</span> fd <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>; fd <span style=color:#f92672>&lt;</span> NOFILE; fd<span style=color:#f92672>++</span>){
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span>(p<span style=color:#f92672>-&gt;</span>ofile[fd]){
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>struct</span> file <span style=color:#f92672>*</span>f <span style=color:#f92672>=</span> p<span style=color:#f92672>-&gt;</span>ofile[fd];
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>fileclose</span>(f);
+</span></span><span style=display:flex><span>            p<span style=color:#f92672>-&gt;</span>ofile[fd] <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>begin_op</span>();
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>iput</span>(p<span style=color:#f92672>-&gt;</span>cwd);
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>end_op</span>();
+</span></span><span style=display:flex><span>    p<span style=color:#f92672>-&gt;</span>cwd <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>acquire</span>(<span style=color:#f92672>&amp;</span>wait_lock);
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Give any children to init.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>reparent</span>(p);
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Parent might be sleeping in wait().
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>wakeup</span>(p<span style=color:#f92672>-&gt;</span>parent);
+</span></span><span style=display:flex><span>      
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>acquire</span>(<span style=color:#f92672>&amp;</span>p<span style=color:#f92672>-&gt;</span>lock);
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    p<span style=color:#f92672>-&gt;</span>xstate <span style=color:#f92672>=</span> status;
+</span></span><span style=display:flex><span>    p<span style=color:#f92672>-&gt;</span>state <span style=color:#f92672>=</span> ZOMBIE;
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>release</span>(<span style=color:#f92672>&amp;</span>wait_lock);
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Jump into the scheduler, never to return.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>sched</span>();
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>panic</span>(<span style=color:#e6db74>&#34;zombie exit&#34;</span>);
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>首先 exit 关闭了所有已打开的文件，将当前目录的引用释放给文件系统，接下来需要设置子进程的父进程为 init 进程，之后通过调用 wakeup 函数唤醒当前进程的父进程，然后设置进程状态为 ZOMBIE。现在进程还没有完全释放它的资源，还不能被重用，并且进程不会再运行。最后 sched 调度其他的进程</p><h2 id=wait>Wait</h2><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=display:flex><span><span style=color:#75715e>// Wait for a child process to exit and return its pid.
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// Return -1 if this process has no children.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>int</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>wait</span>(uint64 addr)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>struct</span> proc <span style=color:#f92672>*</span>np;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>int</span> havekids, pid;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>struct</span> proc <span style=color:#f92672>*</span>p <span style=color:#f92672>=</span> <span style=color:#a6e22e>myproc</span>();
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>acquire</span>(<span style=color:#f92672>&amp;</span>wait_lock);
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span>(;;){
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Scan through table looking for exited children.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        havekids <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span>(np <span style=color:#f92672>=</span> proc; np <span style=color:#f92672>&lt;</span> <span style=color:#f92672>&amp;</span>proc[NPROC]; np<span style=color:#f92672>++</span>){
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span>(np<span style=color:#f92672>-&gt;</span>parent <span style=color:#f92672>==</span> p){
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// make sure the child isn&#39;t still in exit() or swtch().
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                <span style=color:#a6e22e>acquire</span>(<span style=color:#f92672>&amp;</span>np<span style=color:#f92672>-&gt;</span>lock);
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>                havekids <span style=color:#f92672>=</span> <span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span>(np<span style=color:#f92672>-&gt;</span>state <span style=color:#f92672>==</span> ZOMBIE){
+</span></span><span style=display:flex><span>                    <span style=color:#75715e>// Found one.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                    pid <span style=color:#f92672>=</span> np<span style=color:#f92672>-&gt;</span>pid;
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>if</span>(addr <span style=color:#f92672>!=</span> <span style=color:#ae81ff>0</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>copyout</span>(p<span style=color:#f92672>-&gt;</span>pagetable, addr, (<span style=color:#66d9ef>char</span> <span style=color:#f92672>*</span>)<span style=color:#f92672>&amp;</span>np<span style=color:#f92672>-&gt;</span>xstate,<span style=color:#66d9ef>sizeof</span>(np<span style=color:#f92672>-&gt;</span>xstate)) <span style=color:#f92672>&lt;</span> <span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>                    <span style=color:#a6e22e>release</span>(<span style=color:#f92672>&amp;</span>np<span style=color:#f92672>-&gt;</span>lock);
+</span></span><span style=display:flex><span>                    <span style=color:#a6e22e>release</span>(<span style=color:#f92672>&amp;</span>wait_lock);
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>return</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                <span style=color:#a6e22e>freeproc</span>(np);
+</span></span><span style=display:flex><span>                <span style=color:#a6e22e>release</span>(<span style=color:#f92672>&amp;</span>np<span style=color:#f92672>-&gt;</span>lock);
+</span></span><span style=display:flex><span>                <span style=color:#a6e22e>release</span>(<span style=color:#f92672>&amp;</span>wait_lock);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> pid;
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>release</span>(<span style=color:#f92672>&amp;</span>np<span style=color:#f92672>-&gt;</span>lock);
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// No point waiting if we don&#39;t have any children.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span>(<span style=color:#f92672>!</span>havekids <span style=color:#f92672>||</span> p<span style=color:#f92672>-&gt;</span>killed){
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>release</span>(<span style=color:#f92672>&amp;</span>wait_lock);
+</span></span><span style=display:flex><span>          <span style=color:#66d9ef>return</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Wait for a child to exit.
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#a6e22e>sleep</span>(p, <span style=color:#f92672>&amp;</span>wait_lock);  <span style=color:#75715e>//DOC: wait-sleep
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>可以看到，wait 会循环扫描进程表单，去查找自己 ZOMBIE 的子进程。找到后，它会调用 freeproc 去释放子进程例如 trapframe，pagetable 等资源，并将 state 置为 UNUSED</p><p>wait 实际上也是进程退出的一个重要组成部分。在 Unix 中，对于每一个退出的进程，都需要有一个对应的 wait 系统调用，这就是为什么当一个进程退出时，它的子进程需要变成 init 进程的子进程。init 进程的工作就是在一个循环中不停调用 wait，因为每个进程都需要对应一个 wait，这样它的父进程才能调用 freeproc 函数，并清理进程的资源</p><p>当父进程完成了清理进程的所有资源，子进程的状态会被设置成 UNUSED。之后，fork 系统调用才能重用进程在进程表单的位置。直到子进程 exit 的最后，它都没有释放所有的资源，因为它还在运行的过程中，所以不能释放这些资源。最后是父进程释放了运行子进程代码所需要的资源。这样的设计可以让我们极大的精简 exit 的实现</p><h2 id=kill>Kill</h2><p>kill 的实现比想象中更加的&mldr;&mldr;朴素。Uni x中的一个进程可以将另一个进程的 ID 传递给 kill 系统调用，并让另一个进程停止运行。但是这会牵扯到上面讲过的问题，比如我们想要杀掉的进程的内核线程还在更新一些数据，像更新文件系统，创建一个文件之类的，我们不能就这样杀掉。所以 kill 系统调用不能直接停止目标进程的运行。实际上，在 xv6 和其他的 Unix 系统中，kill 基本上不做任何事情</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=display:flex><span><span style=color:#75715e>// Kill the process with the given pid.
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// The victim won&#39;t exit until it tries to return
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// to user space (see usertrap() in trap.c).
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>int</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>kill</span>(<span style=color:#66d9ef>int</span> pid)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>struct</span> proc <span style=color:#f92672>*</span>p;
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span>(p <span style=color:#f92672>=</span> proc; p <span style=color:#f92672>&lt;</span> <span style=color:#f92672>&amp;</span>proc[NPROC]; p<span style=color:#f92672>++</span>){
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>acquire</span>(<span style=color:#f92672>&amp;</span>p<span style=color:#f92672>-&gt;</span>lock);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span>(p<span style=color:#f92672>-&gt;</span>pid <span style=color:#f92672>==</span> pid){
+</span></span><span style=display:flex><span>            p<span style=color:#f92672>-&gt;</span>killed <span style=color:#f92672>=</span> <span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span>(p<span style=color:#f92672>-&gt;</span>state <span style=color:#f92672>==</span> SLEEPING){
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Wake process from sleep().
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                p<span style=color:#f92672>-&gt;</span>state <span style=color:#f92672>=</span> RUNNABLE;
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>release</span>(<span style=color:#f92672>&amp;</span>p<span style=color:#f92672>-&gt;</span>lock);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>release</span>(<span style=color:#f92672>&amp;</span>p<span style=color:#f92672>-&gt;</span>lock);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>它先扫描进程表单，找到目标进程。然后只是将进程的 proc 结构体中 killed 标志位设置为 1。如果进程正在 SLEEPING 状态，将其设置为 RUNNABLE</p><p>而目标进程运行到内核代码中能安全停止运行的位置时，会检查自己的 killed 标志位，如果为 1，目标进程会自愿的执行 exit(-1)。在 usertrap 的最后就会做这样的检查，例如当一个定时器中断到来，usertrap 发现 p->killed === 1，就直接 exit 了</p><p>所以 kill 系统调用并不是真正的立即停止进程的运行，从调用 kill，到另一个进程真正退出，中间可能有很明显的延时</p><p>但其实在 xv6 的很多位置中，如果进程在 SLEEPING 状态时被 kill 了，进程会实际的退出。首先 kill 会将 SLEEPING 改为 RUNABLE，这样调度器线程会重新运行这个线程，而在很多地方的 sleep 循环内（比如下面的 piperead），会对 killed 进行检测：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=display:flex><span><span style=color:#66d9ef>while</span>(pi<span style=color:#f92672>-&gt;</span>nread <span style=color:#f92672>==</span> pi<span style=color:#f92672>-&gt;</span>nwrite <span style=color:#f92672>&amp;&amp;</span> pi<span style=color:#f92672>-&gt;</span>writeopen){  <span style=color:#75715e>//DOC: pipe-empty
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span>(pr<span style=color:#f92672>-&gt;</span>killed){
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>release</span>(<span style=color:#f92672>&amp;</span>pi<span style=color:#f92672>-&gt;</span>lock);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>sleep</span>(<span style=color:#f92672>&amp;</span>pi<span style=color:#f92672>-&gt;</span>nread, <span style=color:#f92672>&amp;</span>pi<span style=color:#f92672>-&gt;</span>lock); <span style=color:#75715e>//DOC: piperead-sleep
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>}
+</span></span></code></pre></div><p>于是函数会立马返回到 usertrap，然后 exit</p><p>因为 pipe 再度 sleep 的时候，pipe 内大概率还是没有数据，所以 kill 了影响不大。但是在更新文件系统这样的操作时， while 里面就不会检查 killed 了，因为必须等待这个操作完成</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=display:flex><span><span style=color:#66d9ef>while</span>(b<span style=color:#f92672>-&gt;</span>disk <span style=color:#f92672>==</span> <span style=color:#ae81ff>1</span>)
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>sleep</span>(b, <span style=color:#f92672>&amp;</span>disk.vdisk_lock);
+</span></span></code></pre></div></div></article><hr><div class=post-info><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83.0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7" y2="7"/></svg>
+<span class=tag><a href=https://whaleblog.github.io/tags/mit-6.s081/>mit-6.s081</a></span>
+<span class=tag><a href=https://whaleblog.github.io/tags/xv6/>xv6</a></span>
+<span class=tag><a href=https://whaleblog.github.io/tags/os/>OS</a></span></p><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-folder meta-icon"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+<span class=tag><a href=https://whaleblog.github.io/categories/courses/>courses</a></span></p><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6A2 2 0 004 4v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+903字</p><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+2024-08-22 19:19</p></div><hr><div class=sharing-buttons><style>.social-icons{display:flex;align-items:center;gap:20px;margin-top:15px}.social-icons a svg{width:20px;height:20px}</style><div class=social-icons><a href=mailto:166845494@qq.com target=_self rel=noopener aria-label="Email me" title="Email me"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1.0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1.0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+</a><a href=https://github.com/WhaleFall-UESTC target=_blank rel=noopener aria-label="Follow on GitHub" title="Follow on GitHub"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentcolor" stroke-width="2"><path d="M12 0C5.373.0.0 5.373.0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931.0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176.0.0 1.008-.322 3.301 1.23A11.509 11.509.0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221.0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.298 24 12c0-6.627-5.373-12-12-12z"/></svg></a></div></div><div class=pagination><div class=pagination__title><span class=pagination__title-h>浏览其他文章</span><hr></div><div class=pagination__buttons><span class="button previous"><a href=https://whaleblog.github.io/posts/%E5%AE%8F%E5%86%85%E6%A0%B8%E4%B8%8E%E5%BE%AE%E5%86%85%E6%A0%B8/><span class=button__icon>←</span>
+<span class=button__text>宏内核与微内核</span>
+</a></span><span class="button next"><a href=https://whaleblog.github.io/posts/xv6+%E5%AE%9E%E9%AA%8C%E6%97%A5%E5%BF%97+-+thread/><span class=button__text>xv6 实验日志 - Thread</span>
+<span class=button__icon>→</span></a></span></div></div></main></div><footer class=footer></footer></div><script type=text/javascript src=/bundle.min.ac2a4bcaed631ec2dc154407be7f09fc28da37de71fae6dee6711b2a3d1622770f87d3cda22c460e9a68ff619bdb1dd75cb7a5d33f159a54e419736cc4541087.js integrity="sha512-rCpLyu1jHsLcFUQHvn8J/CjaN95x+ube5nEbKj0WIncPh9PNoixGDppo/2Gb2x3XXLel0z8VmlTkGXNsxFQQhw=="></script></body></html>

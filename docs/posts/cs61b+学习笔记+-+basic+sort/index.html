@@ -1,12 +1,4 @@
-<!DOCTYPE html>
-<html lang="zh">
-    <head>
-        <meta charset="UTF-8">
-<meta http-equiv="X-UA-Compatible" content="ie=edge">
-
-<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<meta name="author" content="">
-<meta name="description" content="In-place Insertion Sort 我们从数组的左边开始，每次选择一个元素进行交换。然后，我们将这个元素交换到它尽可能靠前的位置。数组的前端逐渐变得有序，直到整个数组都被排序。
+<!doctype html><html lang=zh><head><meta charset=UTF-8><meta http-equiv=X-UA-Compatible content="ie=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=author content><meta name=description content="In-place Insertion Sort 我们从数组的左边开始，每次选择一个元素进行交换。然后，我们将这个元素交换到它尽可能靠前的位置。数组的前端逐渐变得有序，直到整个数组都被排序。
 在逆序数量较少的数组中，插入排序可能是最快的算法。另外，一个不太明显的经验是，插入排序在小数组（小于 15）上非常快，比快速排序与归并排序还快
 Selection Sort 选择排序使用以下算法：找到最小的项。把这一项放到前面。重复直到所有项目都固定
 在数组中 Θ(N2) 的复杂度真有人会用吗&amp;hellip;&amp;hellip;
@@ -19,43 +11,11 @@ In-place Heapsort 最大堆删除最大元素时，是将根元素与数组最�
 你可以在这里看到这个算法的演示
 Merge Sort 有两个排序好的数组，如何将其合成一个排序好的数组：答案很简单，遍历两个数组，取二者最小，时间复杂度为两数组长度之和
 要排序长度为 N 的数组，我们可以将其分成两个长度为 N / 2 的数组并对二者归并排序。N / 2 的数组又可以分成两个 N / 4 的数组，N / 4 又可以分成两个 N / 8&amp;hellip;&amp;hellip; 直到分成两个长度为 1 的数组
-这样我们可以得到一颗高度为 Θ(logN) 的树，树的每一层都要进行 Θ(N) 次操作，时间复杂度为 O(NlogN)" />
-<meta name="keywords" content=", cs61b, Data Structure" />
-<meta name="robots" content="noodp" />
-<meta name="theme-color" content="" />
-<link rel="canonical" href="https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;basic&#43;sort/" />
-
-
-    <title>
-        
-            CS61B 学习笔记 - Basic Sort :: WhaleFall&#39;s Blog 
-        
-    </title>
-
-
-
-
-
-  <link rel="stylesheet" href="/main.min.ab5336003ba331300318b49292c672210905baf1ef5410a739f647e70c8808fa.css" integrity="sha256-q1M2ADujMTADGLSSksZyIQkFuvHvVBCnOfZH5wyICPo=" crossorigin="anonymous">
-
-
-
-
-
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="manifest" href="/site.webmanifest">
-    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="">
-    <link rel="shortcut icon" href="/favicon.ico">
-    <meta name="msapplication-TileColor" content="">
-
-
-<meta itemprop="name" content="CS61B 学习笔记 - Basic Sort">
-<meta itemprop="description" content="In-place Insertion Sort 我们从数组的左边开始，每次选择一个元素进行交换。然后，我们将这个元素交换到它尽可能靠前的位置。数组的前端逐渐变得有序，直到整个数组都被排序。
+这样我们可以得到一颗高度为 Θ(logN) 的树，树的每一层都要进行 Θ(N) 次操作，时间复杂度为 O(NlogN)"><meta name=keywords content=",cs61b,Data Structure"><meta name=robots content="noodp"><meta name=theme-color content><link rel=canonical href=https://whaleblog.github.io/posts/cs61b+%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0+-+basic+sort/><title>CS61B 学习笔记 - Basic Sort :: WhaleFall's Blog
+</title><link rel=stylesheet href=/main.min.ab5336003ba331300318b49292c672210905baf1ef5410a739f647e70c8808fa.css integrity="sha256-q1M2ADujMTADGLSSksZyIQkFuvHvVBCnOfZH5wyICPo=" crossorigin=anonymous><link rel=apple-touch-icon sizes=180x180 href=/apple-touch-icon.png><link rel=icon type=image/png sizes=32x32 href=/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicon-16x16.png><link rel=manifest href=/site.webmanifest><link rel=mask-icon href=/safari-pinned-tab.svg color><link rel="shortcut icon" href=/favicon.ico><meta name=msapplication-TileColor content><meta itemprop=name content="CS61B 学习笔记 - Basic Sort"><meta itemprop=description content="In-place Insertion Sort 我们从数组的左边开始，每次选择一个元素进行交换。然后，我们将这个元素交换到它尽可能靠前的位置。数组的前端逐渐变得有序，直到整个数组都被排序。
 在逆序数量较少的数组中，插入排序可能是最快的算法。另外，一个不太明显的经验是，插入排序在小数组（小于 15）上非常快，比快速排序与归并排序还快
 Selection Sort 选择排序使用以下算法：找到最小的项。把这一项放到前面。重复直到所有项目都固定
-在数组中 Θ(N2) 的复杂度真有人会用吗&hellip;&hellip;
+在数组中 Θ(N2) 的复杂度真有人会用吗&mldr;&mldr;
 Heapsort Naive Heapsort 我们可以另起一个堆，将所有的元素放入到这个堆中，再一个一个把最大值取出来
 整体的运行时间是 Θ(NlogN)，毕竟无论是插入元素还是去除最小值都是 O(logN)
 但是，为了另起一堆，我们又多花了 Θ(N) 的空间
@@ -64,17 +24,11 @@ In-place Heapsort 最大堆删除最大元素时，是将根元素与数组最�
 我们最开始只要将数组“堆化”，然后以上述方法不断将最大值放在堆的最后，最终我们便得到一个排序好的数组
 你可以在这里看到这个算法的演示
 Merge Sort 有两个排序好的数组，如何将其合成一个排序好的数组：答案很简单，遍历两个数组，取二者最小，时间复杂度为两数组长度之和
-要排序长度为 N 的数组，我们可以将其分成两个长度为 N / 2 的数组并对二者归并排序。N / 2 的数组又可以分成两个 N / 4 的数组，N / 4 又可以分成两个 N / 8&hellip;&hellip; 直到分成两个长度为 1 的数组
-这样我们可以得到一颗高度为 Θ(logN) 的树，树的每一层都要进行 Θ(N) 次操作，时间复杂度为 O(NlogN)"><meta itemprop="datePublished" content="2024-07-30T16:03:25+00:00" />
-<meta itemprop="dateModified" content="2024-07-30T16:03:25+00:00" />
-<meta itemprop="wordCount" content="64"><meta itemprop="image" content="https://whaleblog.github.io/" />
-<meta itemprop="keywords" content="cs61b,Data Structure," />
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:image" content="https://whaleblog.github.io/" /><meta name="twitter:title" content="CS61B 学习笔记 - Basic Sort"/>
-<meta name="twitter:description" content="In-place Insertion Sort 我们从数组的左边开始，每次选择一个元素进行交换。然后，我们将这个元素交换到它尽可能靠前的位置。数组的前端逐渐变得有序，直到整个数组都被排序。
+要排序长度为 N 的数组，我们可以将其分成两个长度为 N / 2 的数组并对二者归并排序。N / 2 的数组又可以分成两个 N / 4 的数组，N / 4 又可以分成两个 N / 8&mldr;&mldr; 直到分成两个长度为 1 的数组
+这样我们可以得到一颗高度为 Θ(logN) 的树，树的每一层都要进行 Θ(N) 次操作，时间复杂度为 O(NlogN)"><meta itemprop=datePublished content="2024-07-30T16:03:25+00:00"><meta itemprop=dateModified content="2024-07-30T16:03:25+00:00"><meta itemprop=wordCount content="64"><meta itemprop=image content="https://whaleblog.github.io/"><meta itemprop=keywords content="cs61b,Data Structure,"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://whaleblog.github.io/"><meta name=twitter:title content="CS61B 学习笔记 - Basic Sort"><meta name=twitter:description content="In-place Insertion Sort 我们从数组的左边开始，每次选择一个元素进行交换。然后，我们将这个元素交换到它尽可能靠前的位置。数组的前端逐渐变得有序，直到整个数组都被排序。
 在逆序数量较少的数组中，插入排序可能是最快的算法。另外，一个不太明显的经验是，插入排序在小数组（小于 15）上非常快，比快速排序与归并排序还快
 Selection Sort 选择排序使用以下算法：找到最小的项。把这一项放到前面。重复直到所有项目都固定
-在数组中 Θ(N2) 的复杂度真有人会用吗&hellip;&hellip;
+在数组中 Θ(N2) 的复杂度真有人会用吗&mldr;&mldr;
 Heapsort Naive Heapsort 我们可以另起一个堆，将所有的元素放入到这个堆中，再一个一个把最大值取出来
 整体的运行时间是 Θ(NlogN)，毕竟无论是插入元素还是去除最小值都是 O(logN)
 但是，为了另起一堆，我们又多花了 Θ(N) 的空间
@@ -83,16 +37,11 @@ In-place Heapsort 最大堆删除最大元素时，是将根元素与数组最�
 我们最开始只要将数组“堆化”，然后以上述方法不断将最大值放在堆的最后，最终我们便得到一个排序好的数组
 你可以在这里看到这个算法的演示
 Merge Sort 有两个排序好的数组，如何将其合成一个排序好的数组：答案很简单，遍历两个数组，取二者最小，时间复杂度为两数组长度之和
-要排序长度为 N 的数组，我们可以将其分成两个长度为 N / 2 的数组并对二者归并排序。N / 2 的数组又可以分成两个 N / 4 的数组，N / 4 又可以分成两个 N / 8&hellip;&hellip; 直到分成两个长度为 1 的数组
-这样我们可以得到一颗高度为 Θ(logN) 的树，树的每一层都要进行 Θ(N) 次操作，时间复杂度为 O(NlogN)"/>
-
-
-
-    <meta property="og:title" content="CS61B 学习笔记 - Basic Sort" />
-<meta property="og:description" content="In-place Insertion Sort 我们从数组的左边开始，每次选择一个元素进行交换。然后，我们将这个元素交换到它尽可能靠前的位置。数组的前端逐渐变得有序，直到整个数组都被排序。
+要排序长度为 N 的数组，我们可以将其分成两个长度为 N / 2 的数组并对二者归并排序。N / 2 的数组又可以分成两个 N / 4 的数组，N / 4 又可以分成两个 N / 8&mldr;&mldr; 直到分成两个长度为 1 的数组
+这样我们可以得到一颗高度为 Θ(logN) 的树，树的每一层都要进行 Θ(N) 次操作，时间复杂度为 O(NlogN)"><meta property="og:title" content="CS61B 学习笔记 - Basic Sort"><meta property="og:description" content="In-place Insertion Sort 我们从数组的左边开始，每次选择一个元素进行交换。然后，我们将这个元素交换到它尽可能靠前的位置。数组的前端逐渐变得有序，直到整个数组都被排序。
 在逆序数量较少的数组中，插入排序可能是最快的算法。另外，一个不太明显的经验是，插入排序在小数组（小于 15）上非常快，比快速排序与归并排序还快
 Selection Sort 选择排序使用以下算法：找到最小的项。把这一项放到前面。重复直到所有项目都固定
-在数组中 Θ(N2) 的复杂度真有人会用吗&hellip;&hellip;
+在数组中 Θ(N2) 的复杂度真有人会用吗&mldr;&mldr;
 Heapsort Naive Heapsort 我们可以另起一个堆，将所有的元素放入到这个堆中，再一个一个把最大值取出来
 整体的运行时间是 Θ(NlogN)，毕竟无论是插入元素还是去除最小值都是 O(logN)
 但是，为了另起一堆，我们又多花了 Θ(N) 的空间
@@ -101,364 +50,18 @@ In-place Heapsort 最大堆删除最大元素时，是将根元素与数组最�
 我们最开始只要将数组“堆化”，然后以上述方法不断将最大值放在堆的最后，最终我们便得到一个排序好的数组
 你可以在这里看到这个算法的演示
 Merge Sort 有两个排序好的数组，如何将其合成一个排序好的数组：答案很简单，遍历两个数组，取二者最小，时间复杂度为两数组长度之和
-要排序长度为 N 的数组，我们可以将其分成两个长度为 N / 2 的数组并对二者归并排序。N / 2 的数组又可以分成两个 N / 4 的数组，N / 4 又可以分成两个 N / 8&hellip;&hellip; 直到分成两个长度为 1 的数组
-这样我们可以得到一颗高度为 Θ(logN) 的树，树的每一层都要进行 Θ(N) 次操作，时间复杂度为 O(NlogN)" />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;basic&#43;sort/" /><meta property="og:image" content="https://whaleblog.github.io/" /><meta property="article:section" content="posts" />
-<meta property="article:published_time" content="2024-07-30T16:03:25+00:00" />
-<meta property="article:modified_time" content="2024-07-30T16:03:25+00:00" />
-
-
-
-
-
-    <meta property="article:section" content="notes" />
-
-    <meta property="article:section" content="courses" />
-
-
-
-    <meta property="article:published_time" content="2024-07-30 16:03:25 &#43;0000 UTC" />
-
-
-
-
-
-
-
-
-
-
-
-
-    </head>
-
-    
-        <body>
-    
-    
-        <div class="container">
-            <header class="header">
-    <span class="header__inner">
-        <a href="/" style="text-decoration: none;">
-    <div class="logo">
-        
-            <span class="logo__mark">></span>
-            <span class="logo__text ">
-                WhaleFall</span>
-            <span class="logo__cursor" style=
-                  "
-                   
-                   ">
-            </span>
-        
-    </div>
-</a>
-
-
-        <span class="header__right">
-                <nav class="menu">
-    <ul class="menu__inner"><li><a href="/about">About</a></li><li><a href="/posts">Blog</a></li><li><a href="/tags">Tags</a></li>
-    </ul>
-</nav>
-
-                <span class="menu-trigger">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path d="M0 0h24v24H0z" fill="none"/>
-                        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-                    </svg>
-                </span>
-        </span>
-    </span>
-</header>
-
-
-            <div class="content">
-                
-  <main class="post">
-
-    <div class="post-info">
-      <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock">
-          <circle cx="12" cy="12" r="10"></circle>
-          <polyline points="12 6 12 12 16 14"></polyline>
-        </svg>
-        1分钟阅读
-
-        
-      </p>
-    </div>
-
-    <article>
-      <h1 class="post-title">
-        <a href="https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;basic&#43;sort/">CS61B 学习笔记 - Basic Sort</a>
-      </h1>
-
-      
-
-      
-
-      
-
-      <div class="post-content">
-        <h2 id="in-place-insertion-sort">In-place Insertion Sort</h2>
-<p>我们从数组的左边开始，每次选择一个元素进行交换。然后，我们将这个元素交换到它尽可能靠前的位置。数组的前端逐渐变得有序，直到整个数组都被排序。</p>
-<p><img alt="insert sort.png" src="/upload/insert%20sort.png"></p>
-<p>在逆序数量较少的数组中，插入排序可能是最快的算法。另外，一个不太明显的经验是，插入排序在小数组（小于 15）上非常快，比快速排序与归并排序还快</p>
-<h2 id="selection-sort">Selection Sort</h2>
-<p>选择排序使用以下算法：找到最小的项。把这一项放到前面。重复直到所有项目都固定</p>
-<p>在数组中 Θ(N2) 的复杂度真有人会用吗&hellip;&hellip;</p>
-<h2 id="heapsort">Heapsort</h2>
-<h3 id="naive-heapsort">Naive Heapsort</h3>
-<p>我们可以另起一个<a href="https://whalefall.site/archives/cs61b-MinPQ">堆</a>，将所有的元素放入到这个堆中，再一个一个把最大值取出来</p>
-<p>整体的运行时间是 Θ(NlogN)，毕竟无论是插入元素还是去除最小值都是 O(logN)</p>
-<p>但是，为了另起一堆，我们又多花了 Θ(N) 的空间</p>
-<h3 id="in-place-heapsort">In-place Heapsort</h3>
-<p>最大堆删除最大元素时，是将根元素与数组最末尾交换，然后<code>sink(1)</code> 并设置最末尾为 null</p>
-<p>而我们完全可以将这最末位的空间利用起来，不通过设置 null 的方式删除原来堆中的最大值，而是就这样将其存在末尾（这也是为什么使用最大而不是最小堆）</p>
-<p>我们最开始只要将数组“堆化”，然后以上述方法不断将最大值放在堆的最后，最终我们便得到一个排序好的数组</p>
-<p>你可以在<a href="https://docs.qq.com/slide/DR01makx4aVBQTlpC">这里</a>看到这个算法的演示</p>
-<h2 id="merge-sort">Merge Sort</h2>
-<p>有两个排序好的数组，如何将其合成一个排序好的数组：答案很简单，遍历两个数组，取二者最小，时间复杂度为两数组长度之和</p>
-<p><img alt="freecompress-merge sort.png" src="/upload/freecompress-merge%20sort.png"></p>
-<p>要排序长度为 N 的数组，我们可以将其分成两个长度为 N / 2 的数组并对二者归并排序。N / 2 的数组又可以分成两个 N / 4 的数组，N / 4 又可以分成两个 N / 8&hellip;&hellip; 直到分成两个长度为 1 的数组</p>
-<p><img alt="freecompress-merge sort layer.png" src="/upload/freecompress-merge%20sort%20layer.png"></p>
-<p>这样我们可以得到一颗高度为 Θ(logN) 的树，树的每一层都要进行 Θ(N) 次操作，时间复杂度为 O(NlogN)</p>
-
-      </div>
-    </article>
-
-    <hr />
-
-    <div class="post-info">
-      
-    <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg>
-
-        <span class="tag"><a href="https://whaleblog.github.io/tags/cs61b/">cs61b</a></span>
-        <span class="tag"><a href="https://whaleblog.github.io/tags/data-structure/">Data Structure</a></span>
-        
-    </p>
-
-      
-    <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-folder meta-icon"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-
-        <span class="tag"><a href="https://whaleblog.github.io/categories/notes/">notes</a></span>
-        <span class="tag"><a href="https://whaleblog.github.io/categories/courses/">courses</a></span>
-        
-    </p>
-
-
-      <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-          <polyline points="10 9 9 9 8 9"></polyline>
-        </svg>
-        64字
-      </p>
-
-      <p>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="16" y1="2" x2="16" y2="6"></line>
-          <line x1="8" y1="2" x2="8" y2="6"></line>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-        </svg>
-        
-          2024-07-31 00:03
-        
-
-         
-          
-        
-      </p>
-    </div>
-      <hr />
-      <div class="sharing-buttons">
-        
-
-  
-    
-    
-  
-
-
-
-
-  
-      
-        
-    
-  
-
-
-
-
-  
-    
-      
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-    
-    
-  
-
-
-
-
-  
-			
-    
-  
-
-
-
-
-  
-      
-    
-  
-
-
-<style>
-.social-icons {
-  display: flex;
-  align-items: center;
-  gap: 20px;  
-  margin-top: 15px;
-}
-.social-icons a svg {
-  width: 20px;  
-  height: 20px;
-}
-</style>
-
-<div class="social-icons">
-  
-  <a href="mailto:166845494@qq.com" target="_self" rel="noopener" aria-label="Email me" title="Email me">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-      <polyline points="22,6 12,13 2,6"></polyline>
-    </svg>
-  </a>
-
-  
-  <a href="https://github.com/WhaleFall-UESTC" target="_blank" rel="noopener" aria-label="Follow on GitHub" title="Follow on GitHub">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke-width="2">
-      <path d="M12 0C5.373 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.298 24 12c0-6.627-5.373-12-12-12z"/>
-    </svg>
-  </a>
-</div>
-
-      </div>
-
-    
-    <div class="pagination">
-        
-        <div class="pagination__title">
-            <span class="pagination__title-h">浏览其他文章</span>
-            <hr />
-        </div>
-        
-
-        <div class="pagination__buttons">
-            
-            <span class="button previous">
-                <a href="https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;quicksort/">
-                    <span class="button__icon">←</span>
-                    <span class="button__text">CS61B 学习笔记 - Quicksort</span>
-                </a>
-            </span>
-            
-
-            
-            <span class="button next">
-                <a href="https://whaleblog.github.io/posts/cs61b&#43;%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0&#43;-&#43;mst/">
-                    <span class="button__text">CS61B 学习笔记 - MST</span>
-                    <span class="button__icon">→</span>
-                </a>
-            </span>
-            
-        </div>
-    </div>
-
-
-    
-
-    
-
-    
-
-  </main>
-
-            </div>
-
-            
-                <footer class="footer">
-    
-    
-</footer>
-
-            
-        </div>
-
-        
-
-
-
-<script type="text/javascript" src="/bundle.min.ac2a4bcaed631ec2dc154407be7f09fc28da37de71fae6dee6711b2a3d1622770f87d3cda22c460e9a68ff619bdb1dd75cb7a5d33f159a54e419736cc4541087.js" integrity="sha512-rCpLyu1jHsLcFUQHvn8J/CjaN95x&#43;ube5nEbKj0WIncPh9PNoixGDppo/2Gb2x3XXLel0z8VmlTkGXNsxFQQhw=="></script>
-
-
-
-
-    </body>
-</html>
+要排序长度为 N 的数组，我们可以将其分成两个长度为 N / 2 的数组并对二者归并排序。N / 2 的数组又可以分成两个 N / 4 的数组，N / 4 又可以分成两个 N / 8&mldr;&mldr; 直到分成两个长度为 1 的数组
+这样我们可以得到一颗高度为 Θ(logN) 的树，树的每一层都要进行 Θ(N) 次操作，时间复杂度为 O(NlogN)"><meta property="og:type" content="article"><meta property="og:url" content="https://whaleblog.github.io/posts/cs61b+%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0+-+basic+sort/"><meta property="og:image" content="https://whaleblog.github.io/"><meta property="article:section" content="posts"><meta property="article:published_time" content="2024-07-30T16:03:25+00:00"><meta property="article:modified_time" content="2024-07-30T16:03:25+00:00"><meta property="article:section" content="notes"><meta property="article:section" content="courses"><meta property="article:published_time" content="2024-07-30 16:03:25 +0000 UTC"></head><body><div class=container><header class=header><span class=header__inner><a href=/ style=text-decoration:none><div class=logo><span class=logo__mark>></span>
+<span class=logo__text>WhaleFall</span>
+<span class=logo__cursor></span></div></a><span class=header__right><nav class=menu><ul class=menu__inner><li><a href=/about>About</a></li><li><a href=/posts>Blog</a></li><li><a href=/tags>Tags</a></li></ul></nav><span class=menu-trigger><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></span></span></span></header><div class=content><main class=post><div class=post-info><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+1分钟阅读</p></div><article><h1 class=post-title><a href=https://whaleblog.github.io/posts/cs61b+%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0+-+basic+sort/>CS61B 学习笔记 - Basic Sort</a></h1><div class=post-content><h2 id=in-place-insertion-sort>In-place Insertion Sort</h2><p>我们从数组的左边开始，每次选择一个元素进行交换。然后，我们将这个元素交换到它尽可能靠前的位置。数组的前端逐渐变得有序，直到整个数组都被排序。</p><p><img alt="insert sort.png" src=/upload/insert%20sort.png></p><p>在逆序数量较少的数组中，插入排序可能是最快的算法。另外，一个不太明显的经验是，插入排序在小数组（小于 15）上非常快，比快速排序与归并排序还快</p><h2 id=selection-sort>Selection Sort</h2><p>选择排序使用以下算法：找到最小的项。把这一项放到前面。重复直到所有项目都固定</p><p>在数组中 Θ(N2) 的复杂度真有人会用吗&mldr;&mldr;</p><h2 id=heapsort>Heapsort</h2><h3 id=naive-heapsort>Naive Heapsort</h3><p>我们可以另起一个<a href=https://whalefall.site/archives/cs61b-MinPQ>堆</a>，将所有的元素放入到这个堆中，再一个一个把最大值取出来</p><p>整体的运行时间是 Θ(NlogN)，毕竟无论是插入元素还是去除最小值都是 O(logN)</p><p>但是，为了另起一堆，我们又多花了 Θ(N) 的空间</p><h3 id=in-place-heapsort>In-place Heapsort</h3><p>最大堆删除最大元素时，是将根元素与数组最末尾交换，然后<code>sink(1)</code> 并设置最末尾为 null</p><p>而我们完全可以将这最末位的空间利用起来，不通过设置 null 的方式删除原来堆中的最大值，而是就这样将其存在末尾（这也是为什么使用最大而不是最小堆）</p><p>我们最开始只要将数组“堆化”，然后以上述方法不断将最大值放在堆的最后，最终我们便得到一个排序好的数组</p><p>你可以在<a href=https://docs.qq.com/slide/DR01makx4aVBQTlpC>这里</a>看到这个算法的演示</p><h2 id=merge-sort>Merge Sort</h2><p>有两个排序好的数组，如何将其合成一个排序好的数组：答案很简单，遍历两个数组，取二者最小，时间复杂度为两数组长度之和</p><p><img alt="freecompress-merge sort.png" src=/upload/freecompress-merge%20sort.png></p><p>要排序长度为 N 的数组，我们可以将其分成两个长度为 N / 2 的数组并对二者归并排序。N / 2 的数组又可以分成两个 N / 4 的数组，N / 4 又可以分成两个 N / 8&mldr;&mldr; 直到分成两个长度为 1 的数组</p><p><img alt="freecompress-merge sort layer.png" src=/upload/freecompress-merge%20sort%20layer.png></p><p>这样我们可以得到一颗高度为 Θ(logN) 的树，树的每一层都要进行 Θ(N) 次操作，时间复杂度为 O(NlogN)</p></div></article><hr><div class=post-info><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83.0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7" y2="7"/></svg>
+<span class=tag><a href=https://whaleblog.github.io/tags/cs61b/>cs61b</a></span>
+<span class=tag><a href=https://whaleblog.github.io/tags/data-structure/>Data Structure</a></span></p><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-folder meta-icon"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+<span class=tag><a href=https://whaleblog.github.io/categories/notes/>notes</a></span>
+<span class=tag><a href=https://whaleblog.github.io/categories/courses/>courses</a></span></p><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6A2 2 0 004 4v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+64字</p><p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+2024-07-31 00:03</p></div><hr><div class=sharing-buttons><style>.social-icons{display:flex;align-items:center;gap:20px;margin-top:15px}.social-icons a svg{width:20px;height:20px}</style><div class=social-icons><a href=mailto:166845494@qq.com target=_self rel=noopener aria-label="Email me" title="Email me"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1.0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1.0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+</a><a href=https://github.com/WhaleFall-UESTC target=_blank rel=noopener aria-label="Follow on GitHub" title="Follow on GitHub"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentcolor" stroke-width="2"><path d="M12 0C5.373.0.0 5.373.0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931.0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176.0.0 1.008-.322 3.301 1.23A11.509 11.509.0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221.0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.298 24 12c0-6.627-5.373-12-12-12z"/></svg></a></div></div><div class=pagination><div class=pagination__title><span class=pagination__title-h>浏览其他文章</span><hr></div><div class=pagination__buttons><span class="button previous"><a href=https://whaleblog.github.io/posts/cs61b+%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0+-+quicksort/><span class=button__icon>←</span>
+<span class=button__text>CS61B 学习笔记 - Quicksort</span>
+</a></span><span class="button next"><a href=https://whaleblog.github.io/posts/cs61b+%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0+-+mst/><span class=button__text>CS61B 学习笔记 - MST</span>
+<span class=button__icon>→</span></a></span></div></div></main></div><footer class=footer></footer></div><script type=text/javascript src=/bundle.min.ac2a4bcaed631ec2dc154407be7f09fc28da37de71fae6dee6711b2a3d1622770f87d3cda22c460e9a68ff619bdb1dd75cb7a5d33f159a54e419736cc4541087.js integrity="sha512-rCpLyu1jHsLcFUQHvn8J/CjaN95x+ube5nEbKj0WIncPh9PNoixGDppo/2Gb2x3XXLel0z8VmlTkGXNsxFQQhw=="></script></body></html>
